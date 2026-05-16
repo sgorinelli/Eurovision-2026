@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESC 2026 - SYNC TEST</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+    <style>
+        body { background: #0f0c29; background: linear-gradient(to bottom, #1a1a2e, #16213e); color: white; min-height: 100vh; font-family: sans-serif; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; }
+        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+    </style>
+</head>
+<body class="p-4">
+
+    <!-- STATUS BAR -->
+    <div class="max-w-md mx-auto flex justify-between items-center mb-6 bg-black/40 p-3 rounded-full border border-white/10">
+        <div class="flex items-center">
+            <span id="dot" class="status-dot bg-red-500 shadow-[0_0_10px_red]"></span>
+            <span id="status" class="text-[10px] uppercase font-bold tracking-widest opacity-60">Disconnected</span>
+        </div>
+        <div class="text-[10px] opacity-40 uppercase font-black">Vienna 2026</div>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="setup" class="max-w-md mx-auto glass p-8 text-center mt-10">
+        <h2 class="text-2xl font-bold mb-4">Eurovision Jury</h2>
+        <input id="userName" type="text" placeholder="Your Name" class="w-full bg-black/50 border border-white/10 p-4 rounded-xl mb-4 text-center">
+        <button onclick="start()" class="w-full bg-indigo-600 p-4 rounded-xl font-bold">Join Live Room</button>
+    </div>
+
+    <!-- APP -->
+    <div id="poll" class="hidden max-w-md mx-auto space-y-4">
+        
+        <div class="glass p-6 text-center">
+            <img id="flag" src="" class="h-10 mx-auto mb-4 rounded shadow-lg">
+            <h2 id="country" class="text-3xl font-black mb-1">Country</h2>
+            <p id="track" class="text-sm opacity-50 mb-6 italic">Artist</p>
+            
+            <div class="bg-black/30 p-6 rounded-2xl border border-white/5">
+                <input type="range" id="rng" min="1" max="10" step="1" value="5" class="w-full h-2 bg-indigo-900 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                <div class="flex justify-between items-center mt-4">
+                    <span class="text-xs opacity-30 font-bold">SCORE</span>
+                    <span id="cur" class="text-5xl font-black text-indigo-400 italic">5</span>
+                </div>
+            </div>
+
+            <div class="flex gap-2 mt-6">
+                <button onclick="prev()" class="flex-1 bg-white/5 p-4 rounded-xl text-xs font-bold">BACK</button>
+                <button onclick="next()" class="flex-1 bg-indigo-600 p-4 rounded-xl text-xs font-bold">NEXT SONG</button>
+            </div>
+        </div>
+
+        <!-- LIVE FEEDBACK -->
+        <div class="glass p-5">
+            <h3 class="text-[10px] font-bold opacity-40 uppercase tracking-widest mb-4">Live Scores for <span id="cName" class="text-indigo-400"></span></h3>
+            <div id="live-users" class="space-y-2"></div>
+        </div>
+
+        <!-- SYNC DEBUGGER (Visual proof of data moving) -->
+        <div class="p-3 bg-black/20 rounded-lg text-[10px] font-mono opacity-30">
+            <p>Incoming Data Stream:</p>
+            <div id="debug">Waiting for signal...</div>
+        </div>
+    </div>
+
+<script>
+const songs = [
+    {n:"01", c:"Denmark", code:"dk", a:"Søren Torpegaard Lund"},
+    {n:"02", c:"Germany", code:"de", a:"Sarah Engels"},
+    {n:"03", c:"Israel", code:"il", a:"Noam Bettan"},
+    {n:"04", c:"Belgium", code:"be", a:"ESSYLA"},
+    {n:"05", c:"Austria", code:"at", a:"COSMÓ"}
+];
+
+let idx = 0, uName = "";
+
+// Using the most reliable Public Peers available right now
+const gun = Gun({
+    peers: [
+        'https://gun-manhattan.herokuapp.com/gun',
+        'https://gunjs.herokuapp.com/gun',
+        'https://relay.peer.ooo/gun'
+    ]
+});
+
+// A unique "room" ID to ensure you are all in the same place
+const ROOM_ID = 'ESC2026_TEST_99'; 
+
+gun.on('hi', () => {
+    document.getElementById('dot').className = 'status-dot bg-green-500 shadow-[0_0_10px_#4ade80]';
+    document.getElementById('status').innerText = 'System Live';
+});
+
+function start() {
+    uName = document.getElementById('userName').value.trim();
+    if(!uName) return alert("Enter name!");
+    document.getElementById('setup').style.display = 'none';
+    document.getElementById('poll').style.display = 'block';
+    render();
+}
+
+function render() {
+    const s = songs[idx];
+    document.getElementById('country').innerText = s.c;
+    document.getElementById('cName').innerText = s.c;
+    document.getElementById('track').innerText = s.a;
+    document.getElementById('flag').src = `https://flagcdn.com/w160/${s.code}.png`;
+    document.getElementById('cur').innerText = "5";
+    document.getElementById('rng').value = "5";
+    document.getElementById('live-users').innerHTML = '';
+
+    // LISTEN: We look for a very specific path: ROOM -> COUNTRY -> USER
+    gun.get(ROOM_ID).get(s.c).map().on((score, name) => {
+        if(!name || name === '_' || typeof score === 'object') return;
+        
+        // Log to debugger so you can see it working
+        document.getElementById('debug').innerText = `Received: ${name} voted ${score} for ${s.c}`;
+
+        let el = document.getElementById('u-'+name);
+        if(!el) {
+            el = document.createElement('div');
+            el.id = 'u-'+name;
+            el.className = "flex justify-between bg-white/5 p-2 rounded border border-white/5";
+            document.getElementById('live-users').appendChild(el);
+        }
+        el.innerHTML = `<span>${name}</span><span class="font-bold text-indigo-400">${score}</span>`;
+    });
+}
+
+document.getElementById('rng').oninput = function() {
+    const val = this.value;
+    document.getElementById('cur').innerText = val;
+    // SAVE: ROOM -> COUNTRY -> USER -> SCORE
+    gun.get(ROOM_ID).get(songs[idx].c).get(uName).put(val);
+};
+
+function next() { if(idx < songs.length - 1) { idx++; render(); } }
+function prev() { if(idx > 0) { idx--; render(); } }
+</script>
+</body>
+</html>
