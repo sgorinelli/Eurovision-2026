@@ -3,35 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESC 2026 Jury Sync</title>
+    <title>ESC 2026 - DEEP SYNC</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
     <style>
         body { background: #050510; color: white; font-family: sans-serif; min-height: 100vh; }
         .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; }
-        input[type="range"] { accent-color: #6366f1; cursor: pointer; }
+        .score-item { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body class="p-4 md:p-10 flex flex-col items-center">
 
-    <!-- CONNECTION BAR -->
+    <!-- HEADER -->
     <div class="w-full max-w-md glass p-4 mb-6 flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
         <div class="flex items-center gap-2">
-            <div id="dot" class="h-2 w-2 rounded-full bg-red-600 transition-all duration-300"></div>
+            <div id="dot" class="h-2 w-2 rounded-full bg-red-600 shadow-[0_0_10px_red]"></div>
             <span id="stat">Disconnected</span>
         </div>
-        <div id="peer-count" class="opacity-40">Peers: 0</div>
+        <div id="peer-count" class="opacity-40 font-mono">Nodes: 0</div>
     </div>
 
     <!-- LOGIN -->
     <div id="setup" class="w-full max-w-md glass p-10 text-center shadow-2xl">
-        <h1 class="text-3xl font-black italic mb-2 tracking-tighter">ESC <span class="text-indigo-500">2026</span></h1>
-        <p class="text-[10px] opacity-40 mb-10 tracking-[0.3em]">LIVE JURY PORTAL</p>
-        <input id="uName" type="text" placeholder="Enter Name" class="w-full bg-black/50 border border-white/10 p-4 rounded-xl mb-4 text-center focus:border-indigo-500 outline-none">
-        <button onclick="startApp()" class="w-full bg-indigo-600 p-4 rounded-xl font-black uppercase tracking-widest hover:bg-indigo-500 transition-all">Connect</button>
+        <h1 class="text-3xl font-black italic mb-2">ESC <span class="text-indigo-500">2026</span></h1>
+        <p class="text-[10px] opacity-40 mb-10 tracking-[0.3em]">DEEP SYNC ENGINE</p>
+        <input id="uName" type="text" placeholder="Your Name" class="w-full bg-black/50 border border-white/10 p-4 rounded-xl mb-4 text-center focus:border-indigo-500 outline-none">
+        <button onclick="startApp()" class="w-full bg-indigo-600 p-4 rounded-xl font-black uppercase tracking-widest">Join Live Room</button>
     </div>
 
-    <!-- APP UI -->
+    <!-- APP -->
     <div id="app" class="hidden w-full max-w-md space-y-4">
         
         <div class="glass p-8 text-center relative">
@@ -39,19 +40,23 @@
             <img id="flag" src="" class="h-10 mx-auto mb-4 rounded shadow-lg">
             <h2 id="country" class="text-3xl font-black mb-6 uppercase italic tracking-tighter">Loading...</h2>
             
-            <div class="bg-black/40 p-8 rounded-3xl border border-white/5 mb-6 shadow-inner">
+            <div class="bg-black/40 p-8 rounded-3xl border border-white/5 mb-6">
                 <div id="cur-val" class="text-7xl font-black italic text-indigo-500 mb-2">1</div>
-                <input type="range" id="rng" min="1" max="12" step="1" value="1" class="w-full h-1.5">
+                <input type="range" id="rng" min="1" max="12" step="1" value="1" class="w-full h-1.5 accent-indigo-500">
             </div>
 
             <div class="grid grid-cols-2 gap-3">
-                <button onclick="nav(-1)" class="bg-white/5 p-4 rounded-xl font-bold text-[10px] uppercase tracking-widest">Back</button>
-                <button onclick="nav(1)" class="bg-indigo-600 p-4 rounded-xl font-bold text-[10px] uppercase tracking-widest">Next</button>
+                <button onclick="nav(-1)" class="bg-white/5 p-4 rounded-xl font-bold text-[10px] uppercase">Back</button>
+                <button onclick="nav(1)" class="bg-indigo-600 p-4 rounded-xl font-bold text-[10px] uppercase">Next Song</button>
             </div>
         </div>
 
+        <!-- JURY LIST -->
         <div class="glass p-6">
-            <h3 class="text-[10px] font-black opacity-30 uppercase mb-4 tracking-[0.2em]">Live Consensus</h3>
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-[10px] font-black opacity-30 uppercase tracking-[0.2em]">Live Jury</h3>
+                <span id="data-pulse" class="text-[8px] font-mono opacity-20">Waiting for data...</span>
+            </div>
             <div id="jury-list" class="space-y-2"></div>
         </div>
     </div>
@@ -62,10 +67,10 @@ const songs = [
     {c:"Belgium", code:"be"}, {c:"Austria", code:"at"}
 ];
 
-let idx = 0, myName = "", roomData = {};
-const ROOM_ID = "ESC2026_FINAL_PRODUCTION"; // All users on GitHub will see each other here
+let idx = 0, myName = "", scores = {};
+const ROOM_ID = "ESC2026_MASTER_SYNC_99"; 
 
-// 1. Initialize Gun with reliable HTTPS peers
+// 1. Multi-Relay Configuration
 const gun = Gun({
     peers: [
         'https://gun-manhattan.herokuapp.com/gun',
@@ -73,85 +78,89 @@ const gun = Gun({
     ]
 });
 
-// 2. Status Updates
-gun.on('hi', (p) => {
+// 2. Network Monitoring
+gun.on('hi', () => {
     document.getElementById('dot').className = "h-2 w-2 rounded-full bg-green-500 shadow-[0_0_10px_#4ade80]";
-    document.getElementById('stat').innerText = "Live Mesh Connected";
-    updatePeerCount();
+    document.getElementById('stat').innerText = "Live Mesh";
+    document.getElementById('peer-count').innerText = "Nodes: " + Object.keys(gun._.opt.peers).length;
 });
 
-function updatePeerCount() {
-    const p = Object.keys(gun._.opt.peers).length;
-    document.getElementById('peer-count').innerText = "Peers: " + p;
-}
-
-// 3. App Entry
+// 3. Application Start
 function startApp() {
     myName = document.getElementById('uName').value.trim();
-    if(!myName) return alert("Please enter your name.");
+    if(!myName) return alert("Enter Name");
     
     document.getElementById('setup').style.display = 'none';
     document.getElementById('app').style.display = 'block';
 
-    // Global Listener
-    gun.get(ROOM_ID).map().on((val, key) => {
-        if(!key || key === '_' || typeof val === 'object') return;
-        const [cName, uName] = key.split('::');
-        if(!roomData[cName]) roomData[cName] = {};
-        roomData[cName][uName] = val;
-        if(cName === songs[idx].c) refreshUI();
-    });
-
     render();
 }
 
-// 4. Rendering
 function render() {
     const s = songs[idx];
     document.getElementById('country').innerText = s.c;
     document.getElementById('flag').src = `https://flagcdn.com/w160/${s.code}.png`;
     
-    // Set slider to my previous vote for this country
-    const myVote = (roomData[s.c] && roomData[s.c][myName]) ? roomData[s.c][myName] : 1;
-    document.getElementById('rng').value = myVote;
-    document.getElementById('cur-val').innerText = myVote;
-    
-    refreshUI();
+    // Clear local display for fresh sync
+    document.getElementById('jury-list').innerHTML = '<div class="text-center py-4 opacity-20 text-[10px]">Syncing with peers...</div>';
+    scores = {}; 
+
+    // THE FIX: We attach a direct listener to the specific country node.
+    // This is more reliable than mapping the whole room.
+    gun.get(ROOM_ID).get(s.c).map().on((val, user) => {
+        if(!user || user === '_' || typeof val === 'object') return;
+        
+        scores[user] = val;
+        document.getElementById('data-pulse').innerText = "Last sync: " + new Date().toLocaleTimeString();
+        updateUI();
+    });
+
+    // Load my own value into the slider
+    gun.get(ROOM_ID).get(s.c).get(myName).once((val) => {
+        if(val) {
+            document.getElementById('rng').value = val;
+            document.getElementById('cur-val').innerText = val;
+        } else {
+            document.getElementById('rng').value = 1;
+            document.getElementById('cur-val').innerText = 1;
+        }
+    });
 }
 
-function refreshUI() {
-    const votes = roomData[songs[idx].c] || {};
+function updateUI() {
     const list = document.getElementById('jury-list');
     list.innerHTML = '';
     
-    let sum = 0, n = 0;
-    Object.entries(votes).forEach(([user, score]) => {
+    let sum = 0, count = 0;
+    
+    Object.entries(scores).forEach(([user, val]) => {
         const row = document.createElement('div');
-        row.className = "flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5";
+        row.className = "score-item flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5";
         row.innerHTML = `<span class="text-xs font-bold ${user === myName ? 'text-indigo-400' : 'opacity-40'}">${user}</span>
-                         <span class="font-black text-indigo-500 italic">${score}</span>`;
+                         <span class="font-black text-indigo-500 italic">${val}</span>`;
         list.appendChild(row);
-        sum += parseInt(score);
-        n++;
+        sum += parseInt(val);
+        count++;
     });
 
-    document.getElementById('avg-badge').innerText = n > 0 ? "AVG: " + (sum/n).toFixed(1) : "AVG: --";
+    document.getElementById('avg-badge').innerText = count > 0 ? "AVG: " + (sum/count).toFixed(1) : "AVG: --";
 }
 
-// 5. Input
+// 4. Writing Data
 document.getElementById('rng').oninput = function() {
     const val = this.value;
     document.getElementById('cur-val').innerText = val;
-    // PUSH FLAT KEY: "CountryName::UserName"
-    const key = songs[idx].c + "::" + myName;
-    gun.get(ROOM_ID).get(key).put(val);
+    
+    // SAVE: ROOM -> Country -> User -> Score
+    // We use .put() to ensure it broadcasts to peers
+    gun.get(ROOM_ID).get(songs[idx].c).get(myName).put(val);
 };
 
 function nav(dir) {
     let next = idx + dir;
     if(next >= 0 && next < songs.length) {
         idx = next;
-        render();
+        render(); // This re-triggers the map listener for the new country
     }
 }
 </script>
