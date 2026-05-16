@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ESC 2026 - LIVE PRODUCTION</title>
+    <title>ESC 2026 - VIENNA LIVE</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
     <style>
@@ -29,19 +29,6 @@
         .details-expand { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
         .details-expand.open { max-height: 1000px; padding-bottom: 10px; }
         
-        /* DYNAMIC ARTIST CARD DISPLAY */
-        #artist-card {
-            width: 110px;
-            height: 110px;
-            margin: 0 auto 12px auto;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            border: 2px solid rgba(255,255,255,0.1);
-            background-image: url('running_order_pics.png');
-            background-size: 600% 600%; /* Slices the 6x6 image grid perfectly */
-            transition: background-position 0.4s ease-in-out;
-        }
-
         /* NEON ALERT BORDER */
         @keyframes border-pulse {
             0% { border-color: rgba(236, 72, 153, 0.4); box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.4); }
@@ -58,6 +45,7 @@
         .chat-bubble { animation: pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); margin-bottom: 10px; }
         @keyframes pop { from { transform: translateY(5px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
+        /* CRYSTAL CLEAR MODALS */
         .modal-bg { 
             background: rgba(15, 12, 41, 0.75);
             backdrop-filter: blur(2px);
@@ -69,6 +57,7 @@
 </head>
 <body class="p-4 flex flex-col items-center">
 
+    <!-- HEADER -->
     <div class="w-full max-w-md flex justify-between items-center mb-4 z-10">
         <div class="flex items-center gap-2">
             <div id="dot" class="h-2 w-2 rounded-full bg-red-600 shadow-[0_0_8px_red]"></div>
@@ -82,6 +71,7 @@
         </div>
     </div>
 
+    <!-- LOGIN -->
     <div id="setup" class="w-full max-w-md glass p-8 text-center mt-10">
         <h1 class="text-3xl font-black italic mb-1 uppercase tracking-tighter">Vienna <span class="accent">2026</span></h1>
         <p class="text-[10px] opacity-40 mb-6 tracking-[0.3em]">GRAND FINAL JURY</p>
@@ -89,13 +79,13 @@
         <button onclick="init()" class="w-full bg-indigo-600 p-4 rounded-xl font-black uppercase tracking-widest text-sm shadow-lg shadow-indigo-600/20">Join Session</button>
     </div>
 
+    <!-- APP UI -->
     <div id="app" class="hidden w-full max-w-md space-y-4">
         <div class="glass p-5 text-center relative overflow-hidden">
             <div id="avg" class="absolute top-3 right-3 bg-indigo-500/20 text-indigo-200 text-[9px] px-2 py-0.5 rounded-full font-black border border-indigo-500/30">AVG: --</div>
             <div id="song-num" class="absolute top-3 left-3 opacity-30 text-[10px] font-black italic">--</div>
             
-            <div id="artist-card"></div>
-            
+            <img id="flag" src="" class="h-6 mx-auto mb-3 rounded-sm shadow-lg">
             <h2 id="country" class="text-xl font-black mb-0.5 uppercase italic tracking-tighter">Country</h2>
             <p id="artist" class="text-[9px] opacity-50 uppercase tracking-widest font-bold mb-4 px-4 leading-tight">Artist</p>
             
@@ -116,6 +106,7 @@
         </div>
     </div>
 
+    <!-- CHAT MODAL -->
     <div id="chat-ui" class="hidden fixed inset-0 z-[60] modal-bg p-4 flex flex-col">
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-2xl font-black italic uppercase tracking-tighter">Jury <span class="accent">Chat</span></h2>
@@ -128,6 +119,7 @@
         </div>
     </div>
 
+    <!-- RANKINGS MODAL -->
     <div id="rankings" class="hidden fixed inset-0 z-[60] modal-bg p-6 overflow-y-auto">
         <div class="max-w-md mx-auto">
             <div class="flex justify-between items-center mb-6">
@@ -138,6 +130,7 @@
         </div>
     </div>
 
+    <!-- DELETE CONFIRMATION -->
     <div id="admin-confirm" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6">
         <div class="w-full max-w-xs admin-warning p-8 rounded-3xl text-center shadow-2xl">
             <div class="text-4xl mb-4">⚠️</div>
@@ -151,33 +144,33 @@
     </div>
 
 <script>
-// --- OFFICIAL 2026 RUNNING ORDER WITH IMAGES SPRITE MAP (6x6 Grid, columns/rows scaled 0-100%) ---
+// --- OFFICIAL 2026 RUNNING ORDER ---
 const songs = [
-    {n:"01", c:"Denmark", a:"Søren Torpegaard Lund - Før Vi Går Hjem", bx:0, by:0},
-    {n:"02", c:"Germany", a:"Sarah Engels - Fire", bx:60, by:40},
-    {n:"03", c:"Israel", a:"Noam Bettan - Michelle", bx:100, by:40},
-    {n:"04", c:"Belgium", a:"ESSYLA - Dancing on the Ice", bx:100, by:0},
-    {n:"05", c:"Albania", a:"Alis - Nân", bx:0, by:20},
-    {n:"06", c:"Greece", a:"Akylas - Ferto", bx:80, by:40},
-    {n:"07", c:"Ukraine", a:"LELÉKA - Ridnym", bx:60, by:100},
-    {n:"08", c:"Australia", a:"Delta Goodrem - Eclipse", bx:40, by:0},
-    {n:"09", c:"Serbia", a:"LAVINA - Kraj Mene", bx:0, by:100},
-    {n:"10", c:"Malta", a:"AIDAN - Bella", bx:40, by:20},
-    {n:"11", c:"Czechia", a:"Daniel Zizka - CROSSROADS", bx:60, by:20},
-    {n:"12", c:"Bulgaria", a:"DARA - Bangaranga", bx:0, by:60},
-    {n:"13", c:"Croatia", a:"LELEK - Andromeda", bx:20, by:20},
-    {n:"14", c:"United Kingdom", a:"LOOK MUM NO COMPUTER - Eins, Zwei, Drei", bx:80, by:100},
-    {n:"15", c:"France", a:"Monroe - Regarde !", bx:20, by:40},
-    {n:"16", c:"Moldova", a:"Satoshi - Viva, Moldova!", bx:100, by:60},
-    {n:"17", c:"Finland", a:"Linda Lampenius x Pete Parkkonen - Liekinheitin", bx:0, by:40},
-    {n:"18", c:"Poland", a:"ALICJA - Pray", bx:40, by:80},
-    {n:"19", c:"Lithuania", a:"Lion Ceccah - Sólo Quiero Más", bx:40, by:60},
-    {n:"20", c:"Sweden", a:"FELICIA - My System", bx:20, by:100},
-    {n:"21", c:"Cyprus", a:"Antigoni - JALLA", bx:0, by:80},
-    {n:"22", c:"Italy", a:"Sal Da Vinci - Per Sempre Sì", bx:80, by:60},
-    {n:"23", c:"Norway", a:"JONAS LOVV - YA YA YA", bx:20, by:80},
-    {n:"24", c:"Romania", a:"Alexandra Căpitănescu - Choke Me", bx:80, by:80},
-    {n:"25", c:"Austria", a:"COSMÓ - Tanzschein", bx:60, by:60}
+    {n:"01", c:"Denmark", code:"dk", a:"Søren Torpegaard Lund - Før Vi Går Hjem"},
+    {n:"02", c:"Germany", code:"de", a:"Sarah Engels - Fire"},
+    {n:"03", c:"Israel", code:"il", a:"Noam Bettan - Michelle"},
+    {n:"04", c:"Belgium", code:"be", a:"ESSYLA - Dancing on the Ice"},
+    {n:"05", c:"Albania", code:"al", a:"Alis - Nân"},
+    {n:"06", c:"Greece", code:"gr", a:"Akylas - Ferto"},
+    {n:"07", c:"Ukraine", code:"ua", a:"LELÉKA - Ridnym"},
+    {n:"08", c:"Australia", code:"au", a:"Delta Goodrem - Eclipse"},
+    {n:"09", c:"Serbia", code:"rs", a:"LAVINA - Kraj Mene"},
+    {n:"10", c:"Malta", code:"mt", a:"AIDAN - Bella"},
+    {n:"11", c:"Czechia", code:"cz", a:"Daniel Zizka - CROSSROADS"},
+    {n:"12", c:"Bulgaria", code:"bg", a:"DARA - Bangaranga"},
+    {n:"13", c:"Croatia", code:"hr", a:"LELEK - Andromeda"},
+    {n:"14", c:"United Kingdom", code:"gb", a:"LOOK MUM NO COMPUTER - Eins, Zwei, Drei"},
+    {n:"15", c:"France", code:"fr", a:"Monroe - Regarde !"},
+    {n:"16", c:"Moldova", code:"md", a:"Satoshi - Viva, Moldova!"},
+    {n:"17", c:"Finland", code:"fi", a:"Linda Lampenius x Pete Parkkonen - Liekinheitin"},
+    {n:"18", c:"Poland", code:"pl", a:"ALICJA - Pray"},
+    {n:"19", c:"Lithuania", code:"lt", a:"Lion Ceccah - Sólo Quiero Más"},
+    {n:"20", c:"Sweden", code:"se", a:"FELICIA - My System"},
+    {n:"21", c:"Cyprus", code:"cy", a:"Antigoni - JALLA"},
+    {n:"22", c:"Italy", code:"it", a:"Sal Da Vinci - Per Sempre Sì"},
+    {n:"23", c:"Norway", code:"no", a:"JONAS LOVV - YA YA YA"},
+    {n:"24", c:"Romania", code:"ro", a:"Alexandra Căpitănescu - Choke Me"},
+    {n:"25", c:"Austria", code:"at", a:"COSMÓ - Tanzschein"}
 ];
 
 let idx = 0, myName = "", client = null, roomData = {}; 
@@ -270,10 +263,7 @@ function render() {
     document.getElementById('country').innerText = s.c;
     document.getElementById('artist').innerText = s.a;
     document.getElementById('song-num').innerText = `${s.n}/25`;
-    
-    // Dynamically adjust sprite layout coordinate per country card
-    document.getElementById('artist-card').style.backgroundPosition = `${s.bx}% ${s.by}%`;
-    
+    document.getElementById('flag').src = `https://flagcdn.com/w160/${s.code}.png`;
     const currentScore = (roomData[s.c] && roomData[s.c][myName]) ? roomData[s.c][myName] : 1;
     document.getElementById('rng').value = currentScore;
     document.getElementById('cur-val').innerText = currentScore;
