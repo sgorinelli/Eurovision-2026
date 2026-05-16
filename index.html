@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESC 2026 - FINAL JURY</title>
+    <title>ESC 2026 - SOCIAL JURY</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
     <style>
@@ -25,6 +25,8 @@
         input[type="range"] { accent-color: #818cf8; }
         .details-expand { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
         .details-expand.open { max-height: 1000px; padding-bottom: 10px; }
+        .chat-bubble { animation: pop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes pop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     </style>
 </head>
 <body class="p-4 flex flex-col items-center">
@@ -35,15 +37,20 @@
             <div id="dot" class="h-2 w-2 rounded-full bg-red-600 shadow-[0_0_8px_red]"></div>
             <span id="stat" class="text-[9px] font-black uppercase tracking-widest opacity-40">Connecting</span>
         </div>
-        <button onclick="toggleRankings()" class="text-[9px] font-black bg-indigo-500/20 border border-indigo-500/30 px-3 py-1.5 rounded-full uppercase tracking-widest">🏆 Leaderboard</button>
+        <div class="flex gap-2">
+            <button onclick="toggleChat()" class="relative text-[9px] font-black bg-indigo-500/20 border border-indigo-500/30 px-3 py-1.5 rounded-full uppercase tracking-widest">
+                💬 Chat <span id="chat-notif" class="hidden absolute -top-1 -right-1 h-2 w-2 bg-pink-500 rounded-full"></span>
+            </button>
+            <button onclick="toggleRankings()" class="text-[9px] font-black bg-indigo-500/20 border border-indigo-500/30 px-3 py-1.5 rounded-full uppercase tracking-widest">🏆 Leaderboard</button>
+        </div>
     </div>
 
     <!-- LOGIN -->
     <div id="setup" class="w-full max-w-md glass p-8 text-center mt-10">
-        <h1 class="text-2xl font-black italic mb-1 uppercase">Vienna <span class="accent">2026</span></h1>
-        <p class="text-[9px] opacity-40 mb-6 tracking-[0.3em]">GRAND FINAL JURY</p>
-        <input id="uName" type="text" placeholder="Name" class="w-full bg-white/5 border border-white/10 p-3 rounded-xl mb-4 text-center focus:border-indigo-400 outline-none">
-        <button onclick="init()" class="w-full bg-indigo-600 p-3 rounded-xl font-black uppercase tracking-widest text-sm">Join Room</button>
+        <h1 class="text-2xl font-black italic mb-1 uppercase tracking-tighter">Vienna <span class="accent">2026</span></h1>
+        <p class="text-[9px] opacity-40 mb-6 tracking-[0.3em]">JURY CHAT & SCORE</p>
+        <input id="uName" type="text" placeholder="Your Name" class="w-full bg-white/5 border border-white/10 p-3 rounded-xl mb-4 text-center focus:border-indigo-400 outline-none">
+        <button onclick="init()" class="w-full bg-indigo-600 p-3 rounded-xl font-black uppercase tracking-widest text-sm shadow-lg shadow-indigo-600/20">Enter Room</button>
     </div>
 
     <!-- APP UI -->
@@ -68,8 +75,23 @@
         </div>
 
         <div class="glass p-4">
-            <h3 class="text-[9px] font-black opacity-30 uppercase mb-3 tracking-widest">Consensus</h3>
+            <h3 class="text-[9px] font-black opacity-30 uppercase mb-3 tracking-widest">Live Consensus</h3>
             <div id="jury-list" class="space-y-1.5"></div>
+        </div>
+    </div>
+
+    <!-- CHAT MODAL -->
+    <div id="chat-ui" class="hidden fixed inset-0 z-50 bg-[#0f0c29]/98 backdrop-blur-3xl p-4 flex flex-col">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-black italic uppercase">Jury <span class="accent">Chat</span></h2>
+            <button onclick="toggleChat()" class="text-2xl font-light opacity-50 hover:opacity-100">×</button>
+        </div>
+        <div id="chat-messages" class="flex-1 overflow-y-auto space-y-3 mb-4 p-2 scroll-smooth">
+            <!-- Messages go here -->
+        </div>
+        <div class="flex gap-2 p-2 glass">
+            <input id="chat-input" type="text" placeholder="Say something..." class="flex-1 bg-transparent border-none outline-none text-sm p-2">
+            <button onclick="sendChat()" class="bg-indigo-600 px-4 py-2 rounded-xl font-black text-[10px] uppercase">Send</button>
         </div>
     </div>
 
@@ -77,15 +99,15 @@
     <div id="rankings" class="hidden fixed inset-0 z-50 bg-[#0f0c29]/98 backdrop-blur-3xl p-6 overflow-y-auto">
         <div class="max-w-md mx-auto">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-black italic uppercase">Jury <span class="accent">Rankings</span></h2>
-                <button onclick="toggleRankings()" class="text-2xl font-light opacity-50 hover:opacity-100">×</button>
+                <h2 class="text-xl font-black italic uppercase">Grand Final <span class="accent">Standings</span></h2>
+                <button onclick="toggleRankings()" class="text-2xl font-light">×</button>
             </div>
             <div id="rankings-list" class="space-y-2"></div>
         </div>
     </div>
 
 <script>
-// --- CORRECT 2026 RUNNING ORDER ---
+// --- OFFICIAL 2026 RUNNING ORDER ---
 const songs = [
     {n:"01", c:"Denmark", code:"dk", a:"Søren Torpegaard Lund - Før Vi Går Hjem"},
     {n:"02", c:"Germany", code:"de", a:"Sarah Engels - Fire"},
@@ -133,6 +155,7 @@ function init() {
     client.on('message', (topic, msg) => {
         const d = JSON.parse(msg.toString());
         if (d.type === "SCORE_UPDATE") { updateData(d.country, d.user, d.score); }
+        else if (d.type === "CHAT") { addChatMessage(d.user, d.text); }
         else if (d.type === "SYNC_REQUEST" && d.from !== myName) { send({ type: "SYNC_RESPONSE", data: roomData, to: d.from }); }
         else if (d.type === "SYNC_RESPONSE" && d.to === myName) {
             Object.keys(d.data).forEach(c => { Object.keys(d.data[c]).forEach(u => updateData(c, u, d.data[c][u])); });
@@ -193,6 +216,47 @@ function nav(dir) {
     let next = idx + dir;
     if(next >= 0 && next < songs.length) { idx = next; render(); }
 }
+
+// CHAT LOGIC
+function toggleChat() {
+    const ui = document.getElementById('chat-ui');
+    const isHidden = ui.classList.contains('hidden');
+    ui.classList.toggle('hidden');
+    if(!isHidden) document.getElementById('chat-notif').classList.add('hidden');
+}
+
+function sendChat() {
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if(!text) return;
+    send({ type: "CHAT", user: myName, text: text });
+    input.value = '';
+}
+
+function addChatMessage(user, text) {
+    const container = document.getElementById('chat-messages');
+    const div = document.createElement('div');
+    const isMe = user === myName;
+    div.className = `chat-bubble flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
+    div.innerHTML = `
+        <span class="text-[8px] font-black uppercase opacity-30 mb-1 px-1">${user}</span>
+        <div class="${isMe ? 'bg-indigo-600' : 'bg-white/10'} p-2 rounded-2xl max-w-[80%] text-xs shadow-lg">
+            ${text}
+        </div>
+    `;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+    
+    // Notification logic
+    if(document.getElementById('chat-ui').classList.contains('hidden')) {
+        document.getElementById('chat-notif').classList.remove('hidden');
+    }
+}
+
+// Enter key for chat
+document.getElementById('chat-input').addEventListener('keypress', (e) => {
+    if(e.key === 'Enter') sendChat();
+});
 
 function toggleRankings() {
     const el = document.getElementById('rankings');
