@@ -29,45 +29,45 @@
         .details-expand { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
         .details-expand.open { max-height: 1000px; padding-bottom: 10px; }
         
-        /* CHAT ANIMATIONS */
+        /* NEON ALERT BORDER */
+        @keyframes border-pulse {
+            0% { border-color: rgba(236, 72, 153, 0.4); box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.4); }
+            50% { border-color: rgba(236, 72, 153, 1); box-shadow: 0 0 12px 2px rgba(236, 72, 153, 0.6); }
+            100% { border-color: rgba(236, 72, 153, 0.4); box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); }
+        }
+        .chat-btn-alert {
+            animation: border-pulse 1.5s infinite !important;
+            border-width: 2px !important;
+            background: rgba(236, 72, 153, 0.1) !important;
+        }
+
+        /* CHAT BUBBLES */
         .chat-bubble { animation: pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); margin-bottom: 10px; }
         @keyframes pop { from { transform: translateY(5px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        
-        @keyframes pulse-pink {
-            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.7); }
-            70% { transform: scale(1.2); box-shadow: 0 0 0 10px rgba(236, 72, 153, 0); }
-            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); }
-        }
-        .animate-pulse-pink { animation: pulse-pink 2s infinite; }
 
-        #chat-messages::-webkit-scrollbar { width: 4px; }
-        #chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-
+        /* CRYSTAL CLEAR MODALS */
         .modal-bg { 
             background: rgba(15, 12, 41, 0.75);
             backdrop-filter: blur(2px);
             -webkit-backdrop-filter: blur(2px);
         }
-
-        .admin-warning {
-            border: 2px solid rgba(239, 68, 68, 0.5);
-            background: rgba(20, 10, 10, 0.95);
-        }
+        
+        .admin-warning { border: 2px solid rgba(239, 68, 68, 0.5); background: rgba(20, 10, 10, 0.95); }
     </style>
 </head>
 <body class="p-4 flex flex-col items-center">
 
     <!-- HEADER -->
-    <div class="w-full max-w-md flex justify-between items-center mb-6 z-10">
+    <div class="w-full max-w-md flex justify-between items-center mb-4 z-10">
         <div class="flex items-center gap-2">
             <div id="dot" class="h-2 w-2 rounded-full bg-red-600 shadow-[0_0_8px_red]"></div>
-            <span id="stat" class="text-[10px] font-black uppercase tracking-widest opacity-40">Connecting</span>
+            <span id="stat" class="text-[9px] font-black uppercase tracking-widest opacity-40">Connecting</span>
         </div>
         <div class="flex gap-2">
-            <button id="chat-btn" onclick="openModal('chat-ui')" class="relative text-[11px] font-black bg-indigo-500/20 border border-indigo-500/40 px-4 py-2.5 rounded-full uppercase tracking-widest transition-all active:scale-95">
-                💬 Chat <span id="chat-notif" class="hidden absolute -top-1 -right-1 h-3 w-3 bg-pink-500 border-2 border-[#16213e] rounded-full animate-pulse-pink"></span>
+            <button id="chat-btn" onclick="openModal('chat-ui')" class="relative text-[11px] font-black bg-white/5 border border-white/10 px-4 py-2.5 rounded-full uppercase tracking-widest transition-all">
+                💬 Chat <span id="chat-notif" class="hidden absolute -top-1 -right-1 h-2.5 w-2.5 bg-pink-500 border-2 border-[#0f0c29] rounded-full"></span>
             </button>
-            <button onclick="openModal('rankings')" class="text-[11px] font-black bg-indigo-500/20 border border-indigo-500/40 px-4 py-2.5 rounded-full uppercase tracking-widest transition-all active:scale-95">🏆 Standings</button>
+            <button onclick="openModal('rankings')" class="text-[11px] font-black bg-white/5 border border-white/10 px-4 py-2.5 rounded-full uppercase tracking-widest transition-all">🏆 Standings</button>
         </div>
     </div>
 
@@ -115,7 +115,7 @@
         <div id="chat-messages" class="flex-1 overflow-y-auto space-y-4 mb-4 p-2 pb-10"></div>
         <div class="flex gap-2 p-2 glass items-center mb-2">
             <input id="chat-input" type="text" placeholder="Type a message..." class="flex-1 bg-transparent border-none outline-none text-base p-2">
-            <button onclick="sendChat()" class="bg-indigo-600 h-11 px-6 rounded-xl font-black text-xs uppercase">Send</button>
+            <button onclick="sendChat()" class="bg-indigo-600 h-10 px-5 rounded-xl font-black text-[10px] uppercase">Send</button>
         </div>
     </div>
 
@@ -130,14 +130,14 @@
         </div>
     </div>
 
-    <!-- DELETE CONFIRMATION MODAL -->
+    <!-- DELETE CONFIRMATION -->
     <div id="admin-confirm" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6">
         <div class="w-full max-w-xs admin-warning p-8 rounded-3xl text-center shadow-2xl">
             <div class="text-4xl mb-4">⚠️</div>
-            <h2 class="text-xl font-black uppercase mb-2">Are you sure?</h2>
-            <p id="delete-desc" class="text-xs opacity-70 mb-8 leading-relaxed">This will permanently delete this score for everyone in the room.</p>
+            <h2 class="text-xl font-black uppercase mb-2">Confirm Delete?</h2>
+            <p id="delete-desc" class="text-xs opacity-70 mb-8 leading-relaxed">This wipe is global.</p>
             <div class="flex flex-col gap-3">
-                <button id="final-delete-btn" class="w-full bg-red-600 p-4 rounded-xl font-black uppercase text-xs tracking-widest shadow-lg shadow-red-600/20">Yes, Delete</button>
+                <button id="final-delete-btn" class="w-full bg-red-600 p-4 rounded-xl font-black uppercase text-xs tracking-widest shadow-lg shadow-red-600/20">Delete</button>
                 <button onclick="hideDeleteConfirm()" class="w-full bg-white/10 p-4 rounded-xl font-black uppercase text-[10px] tracking-widest">Cancel</button>
             </div>
         </div>
@@ -187,8 +187,10 @@ window.addEventListener('popstate', function(event) {
 function openModal(id) {
     document.getElementById(id).classList.remove('hidden');
     if (id === 'rankings') updateRankingsUI();
-    // NEW: Clear chat notification when opening chat
-    if (id === 'chat-ui') document.getElementById('chat-notif').classList.add('hidden');
+    if (id === 'chat-ui') {
+        document.getElementById('chat-notif').classList.add('hidden');
+        document.getElementById('chat-btn').classList.remove('chat-btn-alert');
+    }
     history.pushState({ modalOpen: true }, "");
 }
 
@@ -196,15 +198,12 @@ function closeCurrentModal() { history.back(); }
 
 function showDeleteConfirm(country, user) {
     pendingDelete = { country, user };
-    document.getElementById('delete-desc').innerText = `Delete ${user}'s score for ${country}?`;
+    document.getElementById('delete-desc').innerText = `Delete ${user}'s score?`;
     document.getElementById('admin-confirm').classList.remove('hidden');
     document.getElementById('final-delete-btn').onclick = executeDelete;
 }
 
-function hideDeleteConfirm() {
-    document.getElementById('admin-confirm').classList.add('hidden');
-    pendingDelete = null;
-}
+function hideDeleteConfirm() { document.getElementById('admin-confirm').classList.add('hidden'); }
 
 function executeDelete() {
     if(!pendingDelete) return;
@@ -318,13 +317,19 @@ function addChatMessage(user, text) {
     const div = document.createElement('div');
     const isMe = user === myName;
     const userColor = getMemberColor(user);
+    
     div.className = `chat-bubble flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
-    div.innerHTML = `<span style="color: ${userColor}; font-size: 10px; font-weight: 900; text-transform: uppercase; margin-bottom: 2px; padding: 0 4px;">${user}</span><div class="${isMe ? 'bg-indigo-600' : 'bg-white/10'} p-2.5 rounded-2xl max-w-[90%] shadow-lg"><p style="font-size: 14.5px; line-height: 1.4; font-weight: 400; color: white;">${text}</p></div>`;
+    div.innerHTML = `
+        <span style="color: ${userColor}; font-size: 10px; font-weight: 900; text-transform: uppercase; margin-bottom: 2px; padding: 0 4px;">${user}</span>
+        <div class="${isMe ? 'bg-indigo-600' : 'bg-white/10'} p-2.5 rounded-2xl max-w-[90%] shadow-lg">
+            <p style="font-size: 14px; line-height: 1.4; font-weight: 400; color: white;">${text}</p>
+        </div>
+    `;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
-    // Show notification pulse if chat is closed
     if(document.getElementById('chat-ui').classList.contains('hidden')) {
         document.getElementById('chat-notif').classList.remove('hidden');
+        document.getElementById('chat-btn').classList.add('chat-btn-alert');
     }
 }
 
