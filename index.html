@@ -3,38 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ESC 2026 - ULTIMATE JURY</title>
+    <title>ESC 2026 - VIENNA LIVE</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        
         body { 
             background: #0f0c29; 
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0c29 100%);
             background-attachment: fixed;
             color: white; font-family: 'Inter', sans-serif; min-height: 100vh; touch-action: manipulation;
         }
-        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; }
+
+        .glass { 
+            background: rgba(255, 255, 255, 0.05); 
+            backdrop-filter: blur(10px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            border-radius: 20px; 
+        }
+
         .accent { color: #a5b4fc; }
         input[type="range"] { accent-color: #818cf8; }
+
         .details-expand { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
         .details-expand.open { max-height: 1000px; padding-bottom: 10px; }
         
         /* CHAT STYLING */
-        .chat-bubble { animation: pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); margin-bottom: 12px; }
+        .chat-bubble { animation: pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); margin-bottom: 10px; }
         @keyframes pop { from { transform: translateY(5px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        #chat-messages::-webkit-scrollbar { width: 4px; }
+        #chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+        /* CRYSTAL CLEAR MODAL FIX */
+        .modal-bg { 
+            background: rgba(10, 10, 30, 0.5); /* Much more transparent */
+            backdrop-filter: blur(2px);        /* Very, very little blur */
+            -webkit-backdrop-filter: blur(2px);
+        }
     </style>
 </head>
 <body class="p-4 flex flex-col items-center">
 
     <!-- HEADER -->
-    <div class="w-full max-w-md flex justify-between items-center mb-4">
+    <div class="w-full max-w-md flex justify-between items-center mb-4 z-10">
         <div class="flex items-center gap-2">
             <div id="dot" class="h-2 w-2 rounded-full bg-red-600 shadow-[0_0_8px_red]"></div>
             <span id="stat" class="text-[9px] font-black uppercase tracking-widest opacity-40">Connecting</span>
         </div>
         <div class="flex gap-2">
-            <button onclick="openModal('chat-ui')" class="relative text-[10px] font-black bg-indigo-500/20 border border-indigo-500/30 px-3 py-2 rounded-full uppercase tracking-widest">
+            <button onclick="openModal('chat-ui')" class="relative text-[9px] font-black bg-indigo-500/20 border border-indigo-500/30 px-3 py-2 rounded-full uppercase tracking-widest">
                 💬 Chat <span id="chat-notif" class="hidden absolute -top-1 -right-1 h-2.5 w-2.5 bg-pink-500 border-2 border-[#0f0c29] rounded-full"></span>
             </button>
             <button onclick="openModal('rankings')" class="text-[10px] font-black bg-indigo-500/20 border border-indigo-500/30 px-3 py-2 rounded-full uppercase tracking-widest">🏆 Rankings</button>
@@ -76,32 +95,31 @@
         </div>
     </div>
 
-    <!-- CHAT MODAL -->
-    <div id="chat-ui" class="hidden fixed inset-0 z-[60] bg-[#0f0c29] p-4 flex flex-col">
+    <!-- CHAT MODAL (Crystal Clear) -->
+    <div id="chat-ui" class="hidden fixed inset-0 z-[60] modal-bg p-4 flex flex-col">
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-2xl font-black italic uppercase tracking-tighter">Jury <span class="accent">Chat</span></h2>
-            <button onclick="closeCurrentModal()" class="h-12 w-12 flex items-center justify-center rounded-full bg-white/5 text-3xl font-light">×</button>
+            <button onclick="closeCurrentModal()" class="h-12 w-12 flex items-center justify-center rounded-full bg-white/20 text-3xl font-light">×</button>
         </div>
         <div id="chat-messages" class="flex-1 overflow-y-auto space-y-4 mb-4 p-2 pb-10"></div>
         <div class="flex gap-2 p-2 glass items-center mb-2">
-            <input id="chat-input" type="text" placeholder="Type a message..." class="flex-1 bg-transparent border-none outline-none text-lg p-2">
-            <button onclick="sendChat()" class="bg-indigo-600 h-12 px-6 rounded-xl font-black text-xs uppercase">Send</button>
+            <input id="chat-input" type="text" placeholder="Type a message..." class="flex-1 bg-transparent border-none outline-none text-base p-2">
+            <button onclick="sendChat()" class="bg-indigo-600 h-11 px-6 rounded-xl font-black text-xs uppercase">Send</button>
         </div>
     </div>
 
     <!-- RANKINGS MODAL -->
-    <div id="rankings" class="hidden fixed inset-0 z-[60] bg-[#0f0c29]/98 backdrop-blur-3xl p-6 overflow-y-auto">
+    <div id="rankings" class="hidden fixed inset-0 z-[60] modal-bg p-6 overflow-y-auto">
         <div class="max-w-md mx-auto">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-black italic uppercase tracking-tighter">Jury <span class="accent">Standings</span></h2>
-                <button onclick="closeCurrentModal()" class="h-10 w-10 flex items-center justify-center rounded-full bg-white/5 text-2xl font-light">×</button>
+                <button onclick="closeCurrentModal()" class="h-10 w-10 flex items-center justify-center rounded-full bg-white/20 text-2xl font-light">×</button>
             </div>
             <div id="rankings-list" class="space-y-2 pb-20"></div>
         </div>
     </div>
 
 <script>
-// --- OFFICIAL 2026 RUNNING ORDER ---
 const songs = [
     {n:"01", c:"Denmark", code:"dk", a:"Søren Torpegaard Lund - Før Vi Går Hjem"},
     {n:"02", c:"Germany", code:"de", a:"Sarah Engels - Fire"},
@@ -133,9 +151,7 @@ const songs = [
 let idx = 0, myName = "", client = null, roomData = {}; 
 const ROOM = "ESC2026_FINAL_" + (window.location.hash.substring(1) || "MAIN");
 
-// --- GESTURE FIX: POPSTATE TRAP ---
 window.addEventListener('popstate', function(event) {
-    // If the user swipes back, hide everything
     document.getElementById('chat-ui').classList.add('hidden');
     document.getElementById('rankings').classList.add('hidden');
 });
@@ -143,12 +159,10 @@ window.addEventListener('popstate', function(event) {
 function openModal(id) {
     document.getElementById(id).classList.remove('hidden');
     if (id === 'rankings') updateRankingsUI();
-    // Add a state so the back button/swipe has something to "go back" to
     history.pushState({ modalOpen: true }, "");
 }
 
 function closeCurrentModal() {
-    // Manually trigger the back behavior
     history.back();
 }
 
@@ -157,7 +171,6 @@ function getMemberColor(name) {
     for (let i = 0; i < name.length; i++) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
-    // High saturation, high brightness for clear text on dark background
     return `hsl(${Math.abs(hash) % 360}, 85%, 75%)`;
 }
 
@@ -254,9 +267,9 @@ function addChatMessage(user, text) {
     
     div.className = `chat-bubble flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
     div.innerHTML = `
-        <span style="color: ${userColor}; font-size: 11px; font-weight: 900; text-transform: uppercase; margin-bottom: 2px; padding: 0 4px;">${user}</span>
-        <div class="${isMe ? 'bg-indigo-600' : 'bg-white/10'} p-3 rounded-2xl max-w-[90%] shadow-lg">
-            <p style="font-size: 16px; line-height: 1.4; font-weight: 400; color: white;">${text}</p>
+        <span style="color: ${userColor}; font-size: 10px; font-weight: 900; text-transform: uppercase; margin-bottom: 2px; padding: 0 4px;">${user}</span>
+        <div class="${isMe ? 'bg-indigo-600' : 'bg-white/10'} p-2.5 rounded-2xl max-w-[90%] shadow-lg">
+            <p style="font-size: 14px; line-height: 1.4; font-weight: 400; color: white;">${text}</p>
         </div>
     `;
     container.appendChild(div);
