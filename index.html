@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESC 2026 - OFFICIAL JURY</title>
+    <title>ESC 2026 - FINAL JURY</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
     <style>
@@ -19,73 +19,73 @@
             background: rgba(255, 255, 255, 0.04); 
             backdrop-filter: blur(20px); 
             border: 1px solid rgba(255, 255, 255, 0.1); 
-            border-radius: 24px; 
+            border-radius: 20px; 
         }
         .accent { color: #a5b4fc; }
         input[type="range"] { accent-color: #818cf8; }
-        .details-expand { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
-        .details-expand.open { max-height: 500px; }
+        .details-expand { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .details-expand.open { max-height: 1000px; padding-bottom: 10px; }
     </style>
 </head>
-<body class="p-4 md:p-10 flex flex-col items-center">
+<body class="p-4 flex flex-col items-center">
 
-    <!-- NAV -->
-    <div class="w-full max-w-md flex justify-between items-center mb-6">
+    <!-- HEADER -->
+    <div class="w-full max-w-md flex justify-between items-center mb-4">
         <div class="flex items-center gap-2">
             <div id="dot" class="h-2 w-2 rounded-full bg-red-600 shadow-[0_0_8px_red]"></div>
-            <span id="stat" class="text-[10px] font-black uppercase tracking-widest opacity-40">Connecting</span>
+            <span id="stat" class="text-[9px] font-black uppercase tracking-widest opacity-40">Connecting</span>
         </div>
-        <button onclick="toggleRankings()" class="text-[10px] font-black bg-indigo-500/20 border border-indigo-500/30 px-4 py-2 rounded-full hover:bg-indigo-500/40 uppercase tracking-widest transition-all">🏆 Standings</button>
+        <button onclick="toggleRankings()" class="text-[9px] font-black bg-indigo-500/20 border border-indigo-500/30 px-3 py-1.5 rounded-full uppercase tracking-widest">🏆 Leaderboard</button>
     </div>
 
     <!-- LOGIN -->
-    <div id="setup" class="w-full max-w-md glass p-8 text-center shadow-2xl mt-10">
-        <h1 class="text-3xl font-black italic mb-2 tracking-tighter uppercase">Vienna <span class="accent">2026</span></h1>
-        <p class="text-[10px] opacity-40 mb-8 tracking-[0.4em]">OFFICIAL JURY PORTAL</p>
-        <input id="uName" type="text" placeholder="Your Name" class="w-full bg-white/5 border border-white/10 p-4 rounded-xl mb-4 text-center focus:border-indigo-400 outline-none transition-all">
-        <button onclick="init()" class="w-full bg-indigo-600 p-4 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20">Join Session</button>
+    <div id="setup" class="w-full max-w-md glass p-8 text-center mt-10">
+        <h1 class="text-2xl font-black italic mb-1 uppercase">Vienna <span class="accent">2026</span></h1>
+        <p class="text-[9px] opacity-40 mb-6 tracking-[0.3em]">GRAND FINAL JURY</p>
+        <input id="uName" type="text" placeholder="Name" class="w-full bg-white/5 border border-white/10 p-3 rounded-xl mb-4 text-center focus:border-indigo-400 outline-none">
+        <button onclick="init()" class="w-full bg-indigo-600 p-3 rounded-xl font-black uppercase tracking-widest text-sm">Join Room</button>
     </div>
 
     <!-- APP UI -->
-    <div id="app" class="hidden w-full max-w-md space-y-4">
-        <div class="glass p-6 text-center relative overflow-hidden">
-            <div id="avg" class="absolute top-4 right-4 bg-indigo-500/20 text-indigo-200 text-[9px] px-2 py-0.5 rounded-full font-black border border-indigo-500/30">AVG: --</div>
-            <div id="song-num" class="absolute top-4 left-4 opacity-30 text-[9px] font-black italic">--</div>
+    <div id="app" class="hidden w-full max-w-md space-y-3">
+        <div class="glass p-5 text-center relative overflow-hidden">
+            <div id="avg" class="absolute top-3 right-3 bg-indigo-500/20 text-indigo-200 text-[8px] px-2 py-0.5 rounded-full font-black border border-indigo-500/30">AVG: --</div>
+            <div id="song-num" class="absolute top-3 left-3 opacity-30 text-[9px] font-black italic">--</div>
             
-            <img id="flag" src="" class="h-8 mx-auto mb-4 rounded-md shadow-xl">
-            <h2 id="country" class="text-2xl font-black mb-1 uppercase italic tracking-tighter">Country</h2>
-            <p id="artist" class="text-[10px] opacity-50 uppercase tracking-[0.2em] font-bold mb-6">Artist</p>
+            <img id="flag" src="" class="h-6 mx-auto mb-3 rounded-sm shadow-lg">
+            <h2 id="country" class="text-xl font-black mb-0.5 uppercase italic tracking-tighter">Country</h2>
+            <p id="artist" class="text-[9px] opacity-50 uppercase tracking-widest font-bold mb-4">Artist</p>
             
-            <div class="bg-black/40 p-6 rounded-[24px] border border-white/5 mb-6 shadow-inner">
-                <div id="cur-val" class="text-6xl font-black italic accent leading-none mb-4">1</div>
+            <div class="bg-black/30 p-4 rounded-2xl border border-white/5 mb-4">
+                <div id="cur-val" class="text-5xl font-black italic accent leading-none mb-3">1</div>
                 <input type="range" id="rng" min="1" max="10" step="1" value="1" class="w-full h-1.5">
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
-                <button onclick="nav(-1)" class="bg-white/5 p-4 rounded-xl font-black text-[10px] uppercase tracking-widest border border-white/5">Back</button>
-                <button onclick="nav(1)" class="bg-indigo-600 p-4 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-500/20">Next</button>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="nav(-1)" class="bg-white/5 p-3 rounded-lg font-black text-[9px] uppercase border border-white/5">Back</button>
+                <button onclick="nav(1)" class="bg-indigo-600 p-3 rounded-lg font-black text-[9px] uppercase">Next</button>
             </div>
         </div>
 
-        <div class="glass p-5">
-            <h3 class="text-[10px] font-black opacity-30 uppercase mb-4 tracking-[0.2em]">Consensus</h3>
-            <div id="jury-list" class="space-y-2"></div>
+        <div class="glass p-4">
+            <h3 class="text-[9px] font-black opacity-30 uppercase mb-3 tracking-widest">Consensus</h3>
+            <div id="jury-list" class="space-y-1.5"></div>
         </div>
     </div>
 
-    <!-- STANDINGS MODAL -->
+    <!-- RANKINGS -->
     <div id="rankings" class="hidden fixed inset-0 z-50 bg-[#0f0c29]/98 backdrop-blur-3xl p-6 overflow-y-auto">
         <div class="max-w-md mx-auto">
-            <div class="flex justify-between items-center mb-8">
-                <h2 class="text-2xl font-black italic uppercase tracking-tighter">Jury <span class="accent">Standings</span></h2>
-                <button onclick="toggleRankings()" class="h-10 w-10 flex items-center justify-center rounded-full bg-white/5 text-2xl font-light hover:bg-white/10">×</button>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-black italic uppercase">Jury <span class="accent">Rankings</span></h2>
+                <button onclick="toggleRankings()" class="text-2xl font-light opacity-50 hover:opacity-100">×</button>
             </div>
             <div id="rankings-list" class="space-y-2"></div>
         </div>
     </div>
 
 <script>
-// --- OFFICIAL 2026 RUNNING ORDER ---
+// --- CORRECT 2026 RUNNING ORDER ---
 const songs = [
     {n:"01", c:"Denmark", code:"dk", a:"Søren Torpegaard Lund - Før Vi Går Hjem"},
     {n:"02", c:"Germany", code:"de", a:"Sarah Engels - Fire"},
@@ -120,36 +120,27 @@ const ROOM = "ESC2026_FINAL_" + (window.location.hash.substring(1) || "MAIN");
 function init() {
     myName = document.getElementById('uName').value.trim();
     if(!myName) return alert("Enter Name");
-
     client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
-
     client.on('connect', () => {
-        document.getElementById('dot').className = "h-2 w-2 rounded-full bg-green-400 shadow-[0_0_10px_#4ade80]";
+        document.getElementById('dot').className = "h-2 w-2 rounded-full bg-green-400";
         document.getElementById('stat').innerText = "LIVE";
         client.subscribe(`esc2026/${ROOM}/sync`);
         send({ type: "SYNC_REQUEST", from: myName });
-        document.getElementById('setup').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
+        document.getElementById('setup').classList.add('hidden');
+        document.getElementById('app').classList.remove('hidden');
         render();
     });
-
     client.on('message', (topic, msg) => {
         const d = JSON.parse(msg.toString());
-        if (d.type === "SCORE_UPDATE") {
-            updateData(d.country, d.user, d.score);
-        } else if (d.type === "SYNC_REQUEST" && d.from !== myName) {
-            send({ type: "SYNC_RESPONSE", data: roomData, to: d.from });
-        } else if (d.type === "SYNC_RESPONSE" && d.to === myName) {
-            Object.keys(d.data).forEach(c => {
-                Object.keys(d.data[c]).forEach(u => updateData(c, u, d.data[c][u]));
-            });
+        if (d.type === "SCORE_UPDATE") { updateData(d.country, d.user, d.score); }
+        else if (d.type === "SYNC_REQUEST" && d.from !== myName) { send({ type: "SYNC_RESPONSE", data: roomData, to: d.from }); }
+        else if (d.type === "SYNC_RESPONSE" && d.to === myName) {
+            Object.keys(d.data).forEach(c => { Object.keys(d.data[c]).forEach(u => updateData(c, u, d.data[c][u])); });
         }
     });
 }
 
-function send(obj) {
-    if(client) client.publish(`esc2026/${ROOM}/sync`, JSON.stringify(obj));
-}
+function send(obj) { if(client) client.publish(`esc2026/${ROOM}/sync`, JSON.stringify(obj)); }
 
 function updateData(c, u, s) {
     if(!roomData[c]) roomData[c] = {};
@@ -161,14 +152,13 @@ function render() {
     const s = songs[idx];
     document.getElementById('country').innerText = s.c;
     document.getElementById('artist').innerText = s.a;
-    document.getElementById('song-num').innerText = `${s.n} / 25`;
+    document.getElementById('song-num').innerText = `${s.n}/25`;
     document.getElementById('flag').src = `https://flagcdn.com/w160/${s.code}.png`;
     
     const currentScore = (roomData[s.c] && roomData[s.c][myName]) ? roomData[s.c][myName] : 1;
     document.getElementById('rng').value = currentScore;
     document.getElementById('cur-val').innerText = currentScore;
 
-    // Default 1 logic: Force update so "1" is counted if they don't slide
     if (!roomData[s.c] || !roomData[s.c][myName]) {
         updateData(s.c, myName, 1);
         send({ type: "SCORE_UPDATE", user: myName, country: s.c, score: 1 });
@@ -180,16 +170,14 @@ function refreshUI() {
     const list = document.getElementById('jury-list');
     const votes = roomData[songs[idx].c] || {};
     list.innerHTML = '';
-    
     let sum = 0, n = 0;
     Object.entries(votes).forEach(([user, score]) => {
         const row = document.createElement('div');
-        row.className = "flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5";
-        row.innerHTML = `<span class="text-[10px] font-black uppercase tracking-widest ${user === myName ? 'accent' : 'opacity-40'}">${user}</span>
-                         <span class="font-black accent italic text-lg">${score}</span>`;
+        row.className = "flex justify-between items-center bg-white/5 p-2 rounded-lg border border-white/5";
+        row.innerHTML = `<span class="text-[9px] font-black uppercase tracking-widest ${user === myName ? 'accent' : 'opacity-40'}">${user}</span>
+                         <span class="font-black accent italic">${score}</span>`;
         list.appendChild(row);
-        sum += score;
-        n++;
+        sum += score; n++;
     });
     document.getElementById('avg').innerText = n > 0 ? "AVG: " + (sum/n).toFixed(1) : "AVG: --";
 }
@@ -208,18 +196,13 @@ function nav(dir) {
 
 function toggleRankings() {
     const el = document.getElementById('rankings');
-    if(el.classList.contains('hidden')) {
-        updateRankingsUI();
-        el.classList.remove('hidden');
-    } else {
-        el.classList.add('hidden');
-    }
+    if(el.classList.contains('hidden')) { updateRankingsUI(); el.classList.remove('hidden'); }
+    else { el.classList.add('hidden'); }
 }
 
 function updateRankingsUI() {
     const container = document.getElementById('rankings-list');
     container.innerHTML = '';
-    
     const results = songs.map(s => {
         const votes = roomData[s.c] || {};
         const vals = Object.values(votes);
@@ -229,29 +212,10 @@ function updateRankingsUI() {
 
     results.forEach((r, i) => {
         const row = document.createElement('div');
-        row.className = "p-4 glass mb-2 cursor-pointer";
-        row.onclick = (e) => {
-            const details = row.querySelector('.details-expand');
-            details.classList.toggle('open');
-        };
-
-        let individualScores = Object.entries(r.votes)
-            .map(([user, score]) => `<div class="flex justify-between text-[10px] opacity-60 px-4 py-1 border-b border-white/5"><span>${user}</span><span>${score}</span></div>`)
-            .join('');
-
-        row.innerHTML = `
-            <div class="flex justify-between items-center">
-                <div class="flex items-center gap-3">
-                    <span class="text-lg font-black opacity-10">#${i+1}</span>
-                    <img src="https://flagcdn.com/w40/${r.code}.png" class="h-3 rounded shadow">
-                    <span class="font-black text-sm tracking-tighter uppercase italic">${r.name}</span>
-                </div>
-                <span class="text-xl font-black accent italic">${r.avg.toFixed(1)}</span>
-            </div>
-            <div class="details-expand mt-3 bg-black/20 rounded-xl overflow-hidden">
-                ${individualScores}
-            </div>
-        `;
+        row.className = "p-3 glass mb-1.5 cursor-pointer";
+        row.onclick = () => row.querySelector('.details-expand').classList.toggle('open');
+        let scores = Object.entries(r.votes).map(([u, s]) => `<div class="flex justify-between text-[9px] opacity-50 px-3 py-0.5"><span>${u}</span><span>${s}</span></div>`).join('');
+        row.innerHTML = `<div class="flex justify-between items-center"><div class="flex items-center gap-2"><span class="text-xs font-black opacity-20">#${i+1}</span><img src="https://flagcdn.com/w40/${r.code}.png" class="h-2.5 rounded-sm"><span class="font-black text-[11px] uppercase italic">${r.name}</span></div><span class="text-lg font-black accent italic">${r.avg.toFixed(1)}</span></div><div class="details-expand bg-black/20 rounded-lg mt-2">${scores}</div>`;
         container.appendChild(row);
     });
 }
