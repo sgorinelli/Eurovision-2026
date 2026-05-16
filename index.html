@@ -3,90 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESC 2026 - SYNC TEST</title>
+    <title>ESC 2026 - JURY SYNC</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
     <style>
-        body { background: #0f0c29; background: linear-gradient(to bottom, #1a1a2e, #16213e); color: white; min-height: 100vh; font-family: sans-serif; }
-        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; }
-        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+        body { 
+            background: #0f0c29; 
+            background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e); 
+            color: white; 
+            min-height: 100vh; 
+            font-family: 'Inter', sans-serif; 
+        }
+        .glass { 
+            background: rgba(255, 255, 255, 0.05); 
+            backdrop-filter: blur(12px); 
+            border: 1px solid rgba(255,255,255,0.1); 
+            border-radius: 24px; 
+        }
+        .status-dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            background: #818cf8;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 4px solid #1e1b4b;
+        }
     </style>
 </head>
-<body class="p-4">
+<body class="p-4 pb-20">
 
-    <!-- STATUS BAR -->
+    <!-- TOP NAV -->
     <div class="max-w-md mx-auto flex justify-between items-center mb-6 bg-black/40 p-3 rounded-full border border-white/10">
-        <div class="flex items-center">
+        <div class="flex items-center px-2">
             <span id="dot" class="status-dot bg-red-500 shadow-[0_0_10px_red]"></span>
-            <span id="status" class="text-[10px] uppercase font-bold tracking-widest opacity-60">Disconnected</span>
+            <span id="status" class="text-[10px] uppercase font-bold tracking-widest opacity-60">Connecting...</span>
         </div>
-        <div class="text-[10px] opacity-40 uppercase font-black">Vienna 2026</div>
+        <div id="room-display" class="text-[10px] opacity-40 uppercase font-black tracking-tighter">Room: General</div>
     </div>
 
-    <!-- LOGIN -->
+    <!-- LOGIN SCREEN -->
     <div id="setup" class="max-w-md mx-auto glass p-8 text-center mt-10">
-        <h2 class="text-2xl font-bold mb-4">Eurovision Jury</h2>
-        <input id="userName" type="text" placeholder="Your Name" class="w-full bg-black/50 border border-white/10 p-4 rounded-xl mb-4 text-center">
-        <button onclick="start()" class="w-full bg-indigo-600 p-4 rounded-xl font-bold">Join Live Room</button>
+        <div class="text-5xl mb-4">🇪🇺</div>
+        <h2 class="text-2xl font-black mb-2">Jury Portal</h2>
+        <p class="text-xs opacity-50 mb-8">Vienna 2026 Official Sync</p>
+        
+        <input id="userName" type="text" placeholder="Enter Your Name" 
+               class="w-full bg-black/50 border border-white/10 p-4 rounded-2xl mb-4 text-center focus:outline-none focus:border-indigo-500 transition-all">
+        
+        <button onclick="start()" class="w-full bg-indigo-600 hover:bg-indigo-500 p-4 rounded-2xl font-bold transition-all shadow-lg shadow-indigo-500/20">
+            Join Live Room
+        </button>
     </div>
 
-    <!-- APP -->
+    <!-- MAIN VOTING APP -->
     <div id="poll" class="hidden max-w-md mx-auto space-y-4">
         
-        <div class="glass p-6 text-center">
-            <img id="flag" src="" class="h-10 mx-auto mb-4 rounded shadow-lg">
-            <h2 id="country" class="text-3xl font-black mb-1">Country</h2>
-            <p id="track" class="text-sm opacity-50 mb-6 italic">Artist</p>
+        <div class="glass p-6 text-center relative overflow-hidden">
+            <div id="avg-badge" class="absolute top-4 right-4 bg-indigo-500/20 text-indigo-300 text-[10px] font-bold px-2 py-1 rounded-md border border-indigo-500/30">
+                AVG: --
+            </div>
             
-            <div class="bg-black/30 p-6 rounded-2xl border border-white/5">
-                <input type="range" id="rng" min="1" max="10" step="1" value="5" class="w-full h-2 bg-indigo-900 rounded-lg appearance-none cursor-pointer accent-indigo-500">
-                <div class="flex justify-between items-center mt-4">
-                    <span class="text-xs opacity-30 font-bold">SCORE</span>
-                    <span id="cur" class="text-5xl font-black text-indigo-400 italic">5</span>
+            <img id="flag" src="" class="h-12 mx-auto mb-4 rounded-md shadow-2xl transition-all duration-500">
+            <h2 id="country" class="text-3xl font-black mb-1 tracking-tight">Country</h2>
+            <p id="track" class="text-sm opacity-50 mb-8 italic">Artist Name</p>
+            
+            <div class="bg-black/40 p-8 rounded-3xl border border-white/5 shadow-inner">
+                <input type="range" id="rng" min="1" max="12" step="1" value="6" 
+                       class="w-full h-1.5 bg-indigo-900/50 rounded-lg appearance-none cursor-pointer">
+                
+                <div class="flex justify-between items-end mt-6">
+                    <span class="text-[10px] opacity-30 font-black tracking-widest mb-2">YOUR JURY SCORE</span>
+                    <span id="cur" class="text-6xl font-black text-indigo-400 italic leading-none">6</span>
                 </div>
             </div>
 
-            <div class="flex gap-2 mt-6">
-                <button onclick="prev()" class="flex-1 bg-white/5 p-4 rounded-xl text-xs font-bold">BACK</button>
-                <button onclick="next()" class="flex-1 bg-indigo-600 p-4 rounded-xl text-xs font-bold">NEXT SONG</button>
+            <div class="grid grid-cols-2 gap-3 mt-6">
+                <button onclick="prev()" class="bg-white/5 hover:bg-white/10 p-4 rounded-2xl text-[10px] font-black tracking-widest transition-all">PREV</button>
+                <button onclick="next()" class="bg-indigo-600 hover:bg-indigo-500 p-4 rounded-2xl text-[10px] font-black tracking-widest transition-all">NEXT SONG</button>
             </div>
         </div>
 
-        <!-- LIVE FEEDBACK -->
-        <div class="glass p-5">
-            <h3 class="text-[10px] font-bold opacity-40 uppercase tracking-widest mb-4">Live Scores for <span id="cName" class="text-indigo-400"></span></h3>
-            <div id="live-users" class="space-y-2"></div>
+        <!-- LIVE FEED -->
+        <div class="glass p-6">
+            <h3 class="text-[10px] font-black opacity-40 uppercase tracking-[0.2em] mb-4 flex justify-between">
+                <span>Live Jury Stream</span>
+                <span id="jury-count">0 Juries</span>
+            </h3>
+            <div id="live-users" class="space-y-2">
+                <!-- Scores injected here -->
+            </div>
         </div>
 
-        <!-- SYNC DEBUGGER (Visual proof of data moving) -->
-        <div class="p-3 bg-black/20 rounded-lg text-[10px] font-mono opacity-30">
-            <p>Incoming Data Stream:</p>
-            <div id="debug">Waiting for signal...</div>
+        <button onclick="toggleLeaderboard()" class="w-full py-4 text-[10px] font-black opacity-40 uppercase tracking-widest hover:opacity-100 transition-opacity">
+            View Leaderboard
+        </button>
+    </div>
+
+    <!-- LEADERBOARD MODAL -->
+    <div id="leaderboard" class="hidden fixed inset-0 z-50 bg-slate-950 p-6 overflow-y-auto">
+        <div class="max-w-md mx-auto">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-2xl font-black italic">STANDINGS</h2>
+                <button onclick="toggleLeaderboard()" class="text-xs opacity-50 font-bold border border-white/20 px-4 py-2 rounded-full">CLOSE</button>
+            </div>
+            <div id="leaderboard-list" class="space-y-3"></div>
         </div>
     </div>
 
 <script>
 const songs = [
-    {n:"01", c:"Denmark", code:"dk", a:"Søren Torpegaard Lund"},
-    {n:"02", c:"Germany", code:"de", a:"Sarah Engels"},
-    {n:"03", c:"Israel", code:"il", a:"Noam Bettan"},
-    {n:"04", c:"Belgium", code:"be", a:"ESSYLA"},
-    {n:"05", c:"Austria", code:"at", a:"COSMÓ"}
+    {c:"Denmark", code:"dk", a:"Søren Torpegaard Lund"},
+    {c:"Germany", code:"de", a:"Sarah Engels"},
+    {c:"Israel", code:"il", a:"Noam Bettan"},
+    {c:"Belgium", code:"be", a:"ESSYLA"},
+    {c:"Austria", code:"at", a:"COSMÓ"},
+    {c:"Sweden", code:"se", a:"TBD"},
+    {c:"United Kingdom", code:"gb", a:"TBD"}
 ];
 
-let idx = 0, uName = "";
+let idx = 0;
+let uName = localStorage.getItem('esc_jury_name') || "";
+let currentScores = {};
+let debounceTimer;
 
-// Using the most reliable Public Peers available right now
+// Dynamic Room ID based on URL hash (e.g., index.html#myparty)
+const ROOM_ID = 'ESC2026_' + (window.location.hash.substring(1) || 'GLOBAL_TEST');
+document.getElementById('room-display').innerText = `Room: ${window.location.hash.substring(1) || 'Global'}`;
+
 const gun = Gun({
     peers: [
         'https://gun-manhattan.herokuapp.com/gun',
-        'https://gunjs.herokuapp.com/gun',
         'https://relay.peer.ooo/gun'
     ]
 });
 
-// A unique "room" ID to ensure you are all in the same place
-const ROOM_ID = 'ESC2026_TEST_99'; 
+// Init
+if(uName) document.getElementById('userName').value = uName;
 
 gun.on('hi', () => {
     document.getElementById('dot').className = 'status-dot bg-green-500 shadow-[0_0_10px_#4ade80]';
@@ -95,49 +150,131 @@ gun.on('hi', () => {
 
 function start() {
     uName = document.getElementById('userName').value.trim();
-    if(!uName) return alert("Enter name!");
-    document.getElementById('setup').style.display = 'none';
-    document.getElementById('poll').style.display = 'block';
+    if(!uName) return alert("Identify yourself, Jury Member!");
+    localStorage.setItem('esc_jury_name', uName);
+    
+    document.getElementById('setup').classList.add('hidden');
+    document.getElementById('poll').classList.remove('hidden');
     render();
 }
 
 function render() {
     const s = songs[idx];
+    currentScores = {}; // Reset local cache for new song
+    
+    // UI Update
     document.getElementById('country').innerText = s.c;
-    document.getElementById('cName').innerText = s.c;
     document.getElementById('track').innerText = s.a;
     document.getElementById('flag').src = `https://flagcdn.com/w160/${s.code}.png`;
-    document.getElementById('cur').innerText = "5";
-    document.getElementById('rng').value = "5";
     document.getElementById('live-users').innerHTML = '';
+    document.getElementById('cur').innerText = "6";
+    document.getElementById('rng').value = "6";
+    document.getElementById('avg-badge').innerText = "AVG: --";
 
-    // LISTEN: We look for a very specific path: ROOM -> COUNTRY -> USER
-    gun.get(ROOM_ID).get(s.c).map().on((score, name) => {
+    // Unsubscribe from previous updates isn't strictly possible in Gun without .off() 
+    // which is buggy in some versions, so we use a "Song ID" check inside the listener.
+    const currentSongID = s.c;
+
+    gun.get(ROOM_ID).get(currentSongID).map().on((score, name) => {
         if(!name || name === '_' || typeof score === 'object') return;
         
-        // Log to debugger so you can see it working
-        document.getElementById('debug').innerText = `Received: ${name} voted ${score} for ${s.c}`;
+        // Ensure we only process data for the song currently on screen
+        if (songs[idx].c !== currentSongID) return;
 
-        let el = document.getElementById('u-'+name);
-        if(!el) {
-            el = document.createElement('div');
-            el.id = 'u-'+name;
-            el.className = "flex justify-between bg-white/5 p-2 rounded border border-white/5";
-            document.getElementById('live-users').appendChild(el);
-        }
-        el.innerHTML = `<span>${name}</span><span class="font-bold text-indigo-400">${score}</span>`;
+        currentScores[name] = parseFloat(score);
+        updateJuryUI();
     });
 }
 
+function updateJuryUI() {
+    const container = document.getElementById('live-users');
+    container.innerHTML = '';
+    
+    let total = 0;
+    let count = 0;
+
+    Object.entries(currentScores).forEach(([name, score]) => {
+        const el = document.createElement('div');
+        el.className = "flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5 animate-in fade-in duration-300";
+        el.innerHTML = `<span class="text-xs font-medium opacity-80">${name}</span>
+                        <span class="font-black text-indigo-400">${score}</span>`;
+        container.appendChild(el);
+        
+        total += score;
+        count++;
+    });
+
+    document.getElementById('jury-count').innerText = `${count} Juries`;
+    if(count > 0) {
+        document.getElementById('avg-badge').innerText = `AVG: ${(total/count).toFixed(1)}`;
+    }
+}
+
+// Save data with debounce to prevent flooding the relay
 document.getElementById('rng').oninput = function() {
     const val = this.value;
     document.getElementById('cur').innerText = val;
-    // SAVE: ROOM -> COUNTRY -> USER -> SCORE
-    gun.get(ROOM_ID).get(songs[idx].c).get(uName).put(val);
+    
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        gun.get(ROOM_ID).get(songs[idx].c).get(uName).put(val);
+    }, 150); 
 };
 
 function next() { if(idx < songs.length - 1) { idx++; render(); } }
 function prev() { if(idx > 0) { idx--; render(); } }
+
+async function toggleLeaderboard() {
+    const board = document.getElementById('leaderboard');
+    if(!board.classList.contains('hidden')) {
+        board.classList.add('hidden');
+        return;
+    }
+
+    board.classList.remove('hidden');
+    const list = document.getElementById('leaderboard-list');
+    list.innerHTML = '<p class="text-center opacity-50 animate-pulse">Calculating Scores...</p>';
+
+    // Fetch all scores for all songs
+    const results = [];
+    
+    for (const song of songs) {
+        let songTotal = 0;
+        let songCount = 0;
+        
+        // We use .once() for a snapshot to build the leaderboard
+        await new Promise(resolve => {
+            gun.get(ROOM_ID).get(song.c).once((data) => {
+                if(data) {
+                    Object.entries(data).forEach(([key, val]) => {
+                        if(key !== '_' && typeof val !== 'object') {
+                            songTotal += parseFloat(val);
+                            songCount++;
+                        }
+                    });
+                }
+                resolve();
+            });
+            setTimeout(resolve, 200); // Safety timeout
+        });
+
+        if(songCount > 0) {
+            results.push({ name: song.c, avg: (songTotal / songCount) });
+        }
+    }
+
+    results.sort((a, b) => b.avg - a.avg);
+
+    list.innerHTML = results.map((res, i) => `
+        <div class="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10">
+            <div class="flex items-center gap-4">
+                <span class="text-xl font-black opacity-20">#${i+1}</span>
+                <span class="font-bold">${res.name}</span>
+            </div>
+            <span class="text-xl font-black text-indigo-400">${res.avg.toFixed(2)}</span>
+        </div>
+    `).join('') || '<p class="text-center opacity-30">No votes cast yet.</p>';
+}
 </script>
 </body>
 </html>
