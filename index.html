@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ESC 2026 - VIENNA JURY</title>
+    <title>ESC 2026 - MASTER CONTROL</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
     <style>
@@ -36,11 +36,16 @@
         #chat-messages::-webkit-scrollbar { width: 4px; }
         #chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 
-        /* TRANSLUCENT MODAL FIX */
         .modal-bg { 
-            background: rgba(15, 12, 41, 0.75); /* Sees through to the app */
-            backdrop-filter: blur(2px);         /* Minimal blur for performance */
+            background: rgba(15, 12, 41, 0.75);
+            backdrop-filter: blur(2px);
             -webkit-backdrop-filter: blur(2px);
+        }
+
+        /* ADMIN ALERT BOX */
+        .admin-warning {
+            border: 2px solid rgba(239, 68, 68, 0.5);
+            background: rgba(20, 10, 10, 0.95);
         }
     </style>
 </head>
@@ -63,7 +68,7 @@
     <!-- LOGIN -->
     <div id="setup" class="w-full max-w-md glass p-8 text-center mt-10">
         <h1 class="text-3xl font-black italic mb-1 uppercase tracking-tighter">Vienna <span class="accent">2026</span></h1>
-        <p class="text-[10px] opacity-40 mb-6 tracking-[0.3em]">GRAND FINAL JURY</p>
+        <p class="text-[10px] opacity-40 mb-6 tracking-[0.3em]">ADMIN-ENABLED JURY</p>
         <input id="uName" type="text" placeholder="Your Name" class="w-full bg-white/5 border border-white/10 p-4 rounded-xl mb-4 text-center text-lg focus:border-indigo-400 outline-none">
         <button onclick="init()" class="w-full bg-indigo-600 p-4 rounded-xl font-black uppercase tracking-widest text-sm shadow-lg shadow-indigo-600/20">Join Session</button>
     </div>
@@ -99,9 +104,9 @@
     <div id="chat-ui" class="hidden fixed inset-0 z-[60] modal-bg p-4 flex flex-col">
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-2xl font-black italic uppercase tracking-tighter">Jury <span class="accent">Chat</span></h2>
-            <button onclick="closeCurrentModal()" class="h-10 w-10 flex items-center justify-center rounded-full bg-white/10 text-3xl font-light">×</button>
+            <button onclick="closeCurrentModal()" class="h-12 w-12 flex items-center justify-center rounded-full bg-white/10 text-3xl font-light">×</button>
         </div>
-        <div id="chat-messages" class="flex-1 overflow-y-auto space-y-4 mb-4 p-2"></div>
+        <div id="chat-messages" class="flex-1 overflow-y-auto space-y-4 mb-4 p-2 pb-10"></div>
         <div class="flex gap-2 p-2 glass items-center mb-2">
             <input id="chat-input" type="text" placeholder="Type a message..." class="flex-1 bg-transparent border-none outline-none text-base p-2">
             <button onclick="sendChat()" class="bg-indigo-600 h-10 px-5 rounded-xl font-black text-[10px] uppercase">Send</button>
@@ -119,7 +124,21 @@
         </div>
     </div>
 
+    <!-- DELETE CONFIRMATION MODAL -->
+    <div id="admin-confirm" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6">
+        <div class="w-full max-w-xs admin-warning p-8 rounded-3xl text-center shadow-2xl">
+            <div class="text-4xl mb-4">⚠️</div>
+            <h2 class="text-xl font-black uppercase mb-2">Are you sure?</h2>
+            <p id="delete-desc" class="text-xs opacity-70 mb-8 leading-relaxed">This will permanently delete this score for everyone in the room.</p>
+            <div class="flex flex-col gap-3">
+                <button id="final-delete-btn" class="w-full bg-red-600 p-4 rounded-xl font-black uppercase text-xs tracking-widest shadow-lg shadow-red-600/20">Yes, Delete</button>
+                <button onclick="hideDeleteConfirm()" class="w-full bg-white/10 p-4 rounded-xl font-black uppercase text-[10px] tracking-widest">Cancel</button>
+            </div>
+        </div>
+    </div>
+
 <script>
+// --- OFFICIAL 2026 RUNNING ORDER ---
 const songs = [
     {n:"01", c:"Denmark", code:"dk", a:"Søren Torpegaard Lund - Før Vi Går Hjem"},
     {n:"02", c:"Germany", code:"de", a:"Sarah Engels - Fire"},
@@ -150,10 +169,13 @@ const songs = [
 
 let idx = 0, myName = "", client = null, roomData = {}; 
 const ROOM = "ESC2026_FINAL_" + (window.location.hash.substring(1) || "MAIN");
+const ADMIN_NAME = "SIMONE";
+let pendingDelete = null; // Stores { country, user } during confirmation
 
 window.addEventListener('popstate', function(event) {
     document.getElementById('chat-ui').classList.add('hidden');
     document.getElementById('rankings').classList.add('hidden');
+    hideDeleteConfirm();
 });
 
 function openModal(id) {
@@ -162,15 +184,40 @@ function openModal(id) {
     history.pushState({ modalOpen: true }, "");
 }
 
-function closeCurrentModal() {
-    history.back();
+function closeCurrentModal() { history.back(); }
+
+function showDeleteConfirm(country, user) {
+    pendingDelete = { country, user };
+    document.getElementById('delete-desc').innerText = `Delete ${user}'s score for ${country}?`;
+    document.getElementById('admin-confirm').classList.remove('hidden');
+    document.getElementById('final-delete-btn').onclick = executeDelete;
+}
+
+function hideDeleteConfirm() {
+    document.getElementById('admin-confirm').classList.add('hidden');
+    pendingDelete = null;
+}
+
+function executeDelete() {
+    if(!pendingDelete) return;
+    const { country, user } = pendingDelete;
+    
+    // Execute local wipe
+    if(roomData[country]) delete roomData[country][user];
+    
+    // Broadcast Global wipe
+    send({ type: "ADMIN_DELETE", country: country, user: user });
+    
+    // Refresh UIs
+    if(country === songs[idx].c) refreshUI();
+    if(!document.getElementById('rankings').classList.contains('hidden')) updateRankingsUI();
+    
+    hideDeleteConfirm();
 }
 
 function getMemberColor(name) {
     let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-        hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    }
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
     return `hsl(${Math.abs(hash) % 360}, 85%, 75%)`;
 }
 
@@ -191,6 +238,11 @@ function init() {
         const d = JSON.parse(msg.toString());
         if (d.type === "SCORE_UPDATE") { updateData(d.country, d.user, d.score); }
         else if (d.type === "CHAT") { addChatMessage(d.user, d.text); }
+        else if (d.type === "ADMIN_DELETE") { 
+            if(roomData[d.country]) delete roomData[d.country][d.user];
+            if(d.country === songs[idx].c) refreshUI();
+            if(!document.getElementById('rankings').classList.contains('hidden')) updateRankingsUI();
+        }
         else if (d.type === "SYNC_REQUEST" && d.from !== myName) { send({ type: "SYNC_RESPONSE", data: roomData, to: d.from }); }
         else if (d.type === "SYNC_RESPONSE" && d.to === myName) {
             Object.keys(d.data).forEach(c => { Object.keys(d.data[c]).forEach(u => updateData(c, u, d.data[c][u])); });
@@ -231,8 +283,9 @@ function refreshUI() {
     Object.entries(votes).forEach(([user, score]) => {
         const row = document.createElement('div');
         row.className = "flex justify-between items-center bg-white/5 p-2 rounded-lg border border-white/5";
-        row.innerHTML = `<span class="text-[9px] font-black uppercase tracking-widest ${user === myName ? 'accent' : 'opacity-40'}">${user}</span>
-                         <span class="font-black accent italic">${score}</span>`;
+        let adminBtn = (myName === ADMIN_NAME && user !== myName) 
+            ? `<button onclick="showDeleteConfirm('${songs[idx].c}', '${user}')" class="ml-2 text-red-500 opacity-50 hover:opacity-100 text-[10px]">❌</button>` : '';
+        row.innerHTML = `<div class="flex items-center"><span class="text-[9px] font-black uppercase tracking-widest ${user === myName ? 'accent' : 'opacity-40'}">${user}</span>${adminBtn}</div><span class="font-black accent italic">${score}</span>`;
         list.appendChild(row);
         sum += score; n++;
     });
@@ -264,19 +317,11 @@ function addChatMessage(user, text) {
     const div = document.createElement('div');
     const isMe = user === myName;
     const userColor = getMemberColor(user);
-    
     div.className = `chat-bubble flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
-    div.innerHTML = `
-        <span style="color: ${userColor}; font-size: 10px; font-weight: 900; text-transform: uppercase; margin-bottom: 2px; padding: 0 4px;">${user}</span>
-        <div class="${isMe ? 'bg-indigo-600' : 'bg-white/10'} p-2.5 rounded-2xl max-w-[90%] shadow-lg">
-            <p style="font-size: 14.5px; line-height: 1.4; font-weight: 400; color: white;">${text}</p>
-        </div>
-    `;
+    div.innerHTML = `<span style="color: ${userColor}; font-size: 10px; font-weight: 900; text-transform: uppercase; margin-bottom: 2px; padding: 0 4px;">${user}</span><div class="${isMe ? 'bg-indigo-600' : 'bg-white/10'} p-2.5 rounded-2xl max-w-[90%] shadow-lg"><p style="font-size: 14.5px; line-height: 1.4; font-weight: 400; color: white;">${text}</p></div>`;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
-    if(document.getElementById('chat-ui').classList.contains('hidden')) {
-        document.getElementById('chat-notif').classList.remove('hidden');
-    }
+    if(document.getElementById('chat-ui').classList.contains('hidden')) document.getElementById('chat-notif').classList.remove('hidden');
 }
 
 document.getElementById('chat-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendChat(); });
@@ -294,8 +339,12 @@ function updateRankingsUI() {
     results.forEach((r, i) => {
         const row = document.createElement('div');
         row.className = "p-3 glass mb-1.5 cursor-pointer";
-        row.onclick = () => row.querySelector('.details-expand').classList.toggle('open');
-        let scores = Object.entries(r.votes).map(([u, s]) => `<div class="flex justify-between text-[11px] opacity-60 px-3 py-1"><span>${u}</span><span>${s}</span></div>`).join('');
+        row.onclick = (e) => { if(e.target.tagName === 'BUTTON') return; row.querySelector('.details-expand').classList.toggle('open'); };
+        let scores = Object.entries(r.votes).map(([u, s]) => {
+            let adminBtn = (myName === ADMIN_NAME && u !== myName) 
+                ? `<button onclick="showDeleteConfirm('${r.name}', '${u}')" class="text-red-500 opacity-50 ml-2">❌</button>` : '';
+            return `<div class="flex justify-between text-[11px] opacity-60 px-3 py-1 items-center"><span>${u}${adminBtn}</span><span>${s}</span></div>`;
+        }).join('');
         row.innerHTML = `<div class="flex justify-between items-center"><div class="flex items-center gap-2"><span class="text-xs font-black opacity-20">#${i+1}</span><img src="https://flagcdn.com/w40/${r.code}.png" class="h-2.5 rounded-sm"><span class="font-black text-[11px] uppercase italic">${r.name}</span></div><span class="text-lg font-black accent italic">${r.avg.toFixed(1)}</span></div><div class="details-expand bg-black/20 rounded-lg mt-2">${scores}</div>`;
         container.appendChild(row);
     });
