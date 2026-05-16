@@ -3,32 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESC 2026 - JURY LIVE</title>
+    <title>ESC 2026 - TOTAL SYNC</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
     <style>
         body { background: #050510; color: white; font-family: sans-serif; min-height: 100vh; }
         .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; }
-        .accent { color: #818cf8; }
+        .log-entry { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body class="p-4 md:p-10 flex flex-col items-center">
 
-    <!-- CONNECTION STATUS -->
+    <!-- HEADER -->
     <div class="w-full max-w-md glass p-4 mb-6 flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
         <div class="flex items-center gap-2">
             <div id="dot" class="h-2 w-2 rounded-full bg-red-600 transition-all duration-300"></div>
-            <span id="stat">Disconnected</span>
+            <span id="stat">Connecting...</span>
         </div>
-        <div id="room-id" class="opacity-40">ROOM: LOADING...</div>
+        <div id="room-id" class="opacity-40 tracking-tighter">ROOM: ...</div>
     </div>
 
     <!-- LOGIN -->
     <div id="setup" class="w-full max-w-md glass p-10 text-center shadow-2xl">
-        <h1 class="text-3xl font-black italic mb-2 tracking-tighter uppercase">Eurovision <span class="accent">2026</span></h1>
-        <p class="text-[10px] opacity-40 mb-10 tracking-[0.4em]">MQTT REAL-TIME JURY</p>
+        <h1 class="text-3xl font-black italic mb-2 tracking-tighter">ESC <span class="text-indigo-500">2026</span></h1>
+        <p class="text-[10px] opacity-40 mb-10 tracking-[0.4em]">STATE SYNC ENGINE</p>
         <input id="uName" type="text" placeholder="Your Name" class="w-full bg-black/50 border border-white/10 p-4 rounded-xl mb-4 text-center focus:border-indigo-500 outline-none">
-        <button onclick="connect()" class="w-full bg-indigo-600 p-4 rounded-xl font-black uppercase tracking-widest hover:bg-indigo-500 transition-all">Join Session</button>
+        <button onclick="init()" class="w-full bg-indigo-600 p-4 rounded-xl font-black uppercase tracking-widest hover:bg-indigo-500">Enter Room</button>
     </div>
 
     <!-- APP -->
@@ -36,23 +37,30 @@
         <div class="glass p-8 text-center relative">
             <div id="avg" class="absolute top-4 right-4 bg-indigo-500/20 text-indigo-400 text-[10px] px-2 py-1 rounded font-mono font-bold">AVG: --</div>
             <img id="flag" src="" class="h-10 mx-auto mb-4 rounded shadow-lg">
-            <h2 id="country" class="text-3xl font-black mb-6 uppercase italic tracking-tighter">Country</h2>
+            <h2 id="country" class="text-3xl font-black mb-6 uppercase italic">Country</h2>
             
-            <div class="bg-black/40 p-8 rounded-3xl border border-white/5 mb-6">
-                <div id="cur-val" class="text-7xl font-black italic accent leading-none mb-2">1</div>
+            <div class="bg-black/40 p-8 rounded-3xl border border-white/5 mb-6 shadow-inner">
+                <div id="cur-val" class="text-7xl font-black italic text-indigo-500 leading-none mb-2">1</div>
                 <input type="range" id="rng" min="1" max="12" step="1" value="1" class="w-full h-1.5 accent-indigo-500">
             </div>
 
             <div class="grid grid-cols-2 gap-3">
-                <button onclick="nav(-1)" class="bg-white/5 p-4 rounded-xl font-bold text-[10px] uppercase tracking-widest">Back</button>
-                <button onclick="nav(1)" class="bg-indigo-600 p-4 rounded-xl font-bold text-[10px] uppercase tracking-widest">Next</button>
+                <button onclick="nav(-1)" class="bg-white/5 p-4 rounded-xl font-bold text-[10px] uppercase">Back</button>
+                <button onclick="nav(1)" class="bg-indigo-600 p-4 rounded-xl font-bold text-[10px] uppercase">Next</button>
             </div>
         </div>
 
-        <!-- JURY LIST -->
+        <!-- JURY FEED -->
         <div class="glass p-6">
-            <h3 class="text-[10px] font-black opacity-30 uppercase mb-4 tracking-[0.2em]">Real-Time Jury Consensus</h3>
-            <div id="jury-list" class="space-y-2"></div>
+            <h3 class="text-[10px] font-black opacity-30 uppercase mb-4">Consensus</h3>
+            <div id="jury-list" class="space-y-2 mb-6"></div>
+            
+            <hr class="border-white/5 mb-4">
+            
+            <h3 class="text-[9px] font-black opacity-20 uppercase mb-2">Network Activity</h3>
+            <div id="activity-log" class="text-[8px] font-mono opacity-30 space-y-1 h-12 overflow-hidden">
+                Waiting for signal...
+            </div>
         </div>
     </div>
 
@@ -63,71 +71,79 @@ const songs = [
 ];
 
 let idx = 0, myName = "", client = null;
-let roomData = {}; // Format: { "Denmark": { "User1": 10, "User2": 8 } }
+let roomData = {}; // Store for ALL country scores
 
-// Unique Room ID based on URL hash or a default
-const ROOM = "ESC2026_" + (window.location.hash.substring(1) || "GENERAL_V1");
+// Using a high-uniqueness room ID
+const ROOM = "ESC2026_PROD_" + (window.location.hash.substring(1) || "MAIN");
 document.getElementById('room-id').innerText = "ROOM: " + ROOM;
 
-// 1. MQTT CONNECTION
-function connect() {
-    myName = document.getElementById('uName').value.trim();
-    if(!myName) return alert("Enter your name!");
+function log(msg) {
+    const el = document.getElementById('activity-log');
+    el.innerHTML = `<div class="log-entry">[${new Date().toLocaleTimeString()}] ${msg}</div>` + el.innerHTML;
+}
 
-    // Using the public HiveMQ Broker over Secure WebSockets
+function init() {
+    myName = document.getElementById('uName').value.trim();
+    if(!myName) return alert("Enter Name");
+
+    // Connect to HiveMQ Public Broker
     client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
 
     client.on('connect', () => {
         document.getElementById('dot').className = "h-2 w-2 rounded-full bg-green-500 shadow-[0_0_10px_#4ade80]";
-        document.getElementById('stat').innerText = "Connected";
+        document.getElementById('stat').innerText = "LIVE";
         
-        // Subscribe to the room
-        client.subscribe(`vienna2026/jury/${ROOM}/#`);
+        // Subscribe to the global room topic
+        client.subscribe(`esc2026/${ROOM}/sync`);
         
-        // Let others know you joined and request their current scores
-        broadcast({ type: "HELLO", user: myName });
+        // Phase 1: Shout "HELLO" to request state from others
+        send({ type: "SYNC_REQUEST", from: myName });
 
         document.getElementById('setup').style.display = 'none';
         document.getElementById('app').style.display = 'block';
         render();
     });
 
-    client.on('message', (topic, message) => {
-        const data = JSON.parse(message.toString());
+    client.on('message', (topic, msg) => {
+        const d = JSON.parse(msg.toString());
         
-        if (data.type === "SCORE") {
-            handleScoreUpdate(data);
-        } else if (data.type === "HELLO" && data.user !== myName) {
-            // When someone new joins, send them your current score for the song you're on
-            sendMyCurrentScore();
+        if (d.type === "SCORE_UPDATE") {
+            updateData(d.country, d.user, d.score);
+            log(`Received ${d.score} from ${d.user}`);
+        } 
+        else if (d.type === "SYNC_REQUEST" && d.from !== myName) {
+            log(`${d.from} joined. Sending state...`);
+            // Someone joined! Send them our current local database
+            send({ type: "SYNC_RESPONSE", data: roomData, to: d.from });
+        }
+        else if (d.type === "SYNC_RESPONSE" && d.to === myName) {
+            log(`State received from peer.`);
+            // We just joined and someone gave us the data
+            Object.keys(d.data).forEach(cName => {
+                Object.keys(d.data[cName]).forEach(uName => {
+                    updateData(cName, uName, d.data[cName][uName]);
+                });
+            });
         }
     });
 }
 
-function broadcast(obj) {
-    if(client) client.publish(`vienna2026/jury/${ROOM}/events`, JSON.stringify(obj));
+function send(obj) {
+    if(client) client.publish(`esc2026/${ROOM}/sync`, JSON.stringify(obj));
 }
 
-function sendMyCurrentScore() {
-    const val = document.getElementById('rng').value;
-    broadcast({ type: "SCORE", user: myName, country: songs[idx].c, score: val });
+function updateData(c, u, s) {
+    if(!roomData[c]) roomData[c] = {};
+    roomData[c][u] = s;
+    if(c === songs[idx].c) refreshUI();
 }
 
-function handleScoreUpdate(data) {
-    if(!roomData[data.country]) roomData[data.country] = {};
-    roomData[data.country][data.user] = data.score;
-    
-    if(data.country === songs[idx].c) refreshUI();
-}
-
-// 2. UI LOGIC
 function render() {
     const s = songs[idx];
     document.getElementById('country').innerText = s.c;
     document.getElementById('flag').src = `https://flagcdn.com/w160/${s.code}.png`;
     
-    // Set slider to my local memory of this song
-    const myLast = (roomData[s.c] && roomCache(s.c)[myName]) ? roomData[s.c][myName] : 1;
+    const myLast = (roomData[s.c] && roomData[s.c][myName]) ? roomData[s.c][myName] : 1;
     document.getElementById('rng').value = myLast;
     document.getElementById('cur-val').innerText = myLast;
     
@@ -143,35 +159,25 @@ function refreshUI() {
     Object.entries(votes).forEach(([user, score]) => {
         const row = document.createElement('div');
         row.className = "flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5";
-        row.innerHTML = `<span class="text-xs font-bold ${user === myName ? 'accent' : 'opacity-40'}">${user}</span>
-                         <span class="font-black accent italic">${score}</span>`;
+        row.innerHTML = `<span class="text-xs font-bold ${user === myName ? 'text-indigo-400' : 'opacity-40'}">${user}</span>
+                         <span class="font-black text-indigo-500 italic">${score}</span>`;
         list.appendChild(row);
         sum += parseInt(score);
         n++;
     });
-
     document.getElementById('avg').innerText = n > 0 ? "AVG: " + (sum/n).toFixed(1) : "AVG: --";
 }
 
-// 3. INPUT
 document.getElementById('rng').oninput = function() {
     const val = this.value;
     document.getElementById('cur-val').innerText = val;
-    
-    // Update local memory
-    if(!roomData[songs[idx].c]) roomData[songs[idx].c] = {};
-    roomData[songs[idx].c][myName] = val;
-    
-    // Broadcast to the broker
-    broadcast({ type: "SCORE", user: myName, country: songs[idx].c, score: val });
+    updateData(songs[idx].c, myName, val);
+    send({ type: "SCORE_UPDATE", user: myName, country: songs[idx].c, score: val });
 };
 
 function nav(dir) {
     let next = idx + dir;
-    if(next >= 0 && next < songs.length) {
-        idx = next;
-        render();
-    }
+    if(next >= 0 && next < songs.length) { idx = next; render(); }
 }
 </script>
 </body>
