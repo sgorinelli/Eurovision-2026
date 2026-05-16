@@ -3,58 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESC 2026 - HARD SYNC</title>
+    <title>ESC 2026 Jury Sync</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
     <style>
-        body { background: #050510; color: white; font-family: sans-serif; }
-        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; }
-        .btn { transition: all 0.2s; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
-        .btn:active { transform: scale(0.95); }
+        body { background: #050510; color: white; font-family: sans-serif; min-height: 100vh; }
+        .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; }
+        input[type="range"] { accent-color: #6366f1; cursor: pointer; }
     </style>
 </head>
-<body class="p-6 flex flex-col items-center">
+<body class="p-4 md:p-10 flex flex-col items-center">
 
-    <!-- CONNECTION PANEL -->
-    <div class="w-full max-w-md glass p-4 mb-4 flex justify-between items-center text-[10px]">
+    <!-- CONNECTION BAR -->
+    <div class="w-full max-w-md glass p-4 mb-6 flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
         <div class="flex items-center gap-2">
-            <div id="dot" class="h-2 w-2 rounded-full bg-red-500"></div>
-            <span id="status">OFFLINE</span>
+            <div id="dot" class="h-2 w-2 rounded-full bg-red-600 transition-all duration-300"></div>
+            <span id="stat">Disconnected</span>
         </div>
-        <div class="flex gap-4">
-            <button onclick="sendPing()" class="text-indigo-400 border border-indigo-400/30 px-2 py-1 rounded">TEST SIGNAL</button>
-            <button onclick="location.reload()" class="opacity-40">RELOAD</button>
-        </div>
+        <div id="peer-count" class="opacity-40">Peers: 0</div>
     </div>
 
     <!-- LOGIN -->
-    <div id="login-zone" class="w-full max-w-md glass p-10 text-center mt-10">
-        <h1 class="text-3xl font-black italic mb-6 uppercase tracking-tighter">Eurovision <span class="text-indigo-500">2026</span></h1>
-        <input id="u" type="text" placeholder="Your Name" class="w-full bg-black/50 border border-white/10 p-4 rounded-xl mb-4 text-center outline-none focus:border-indigo-500">
-        <button onclick="join()" class="btn w-full bg-indigo-600 p-4 rounded-xl">Join Jury</button>
+    <div id="setup" class="w-full max-w-md glass p-10 text-center shadow-2xl">
+        <h1 class="text-3xl font-black italic mb-2 tracking-tighter">ESC <span class="text-indigo-500">2026</span></h1>
+        <p class="text-[10px] opacity-40 mb-10 tracking-[0.3em]">LIVE JURY PORTAL</p>
+        <input id="uName" type="text" placeholder="Enter Name" class="w-full bg-black/50 border border-white/10 p-4 rounded-xl mb-4 text-center focus:border-indigo-500 outline-none">
+        <button onclick="startApp()" class="w-full bg-indigo-600 p-4 rounded-xl font-black uppercase tracking-widest hover:bg-indigo-500 transition-all">Connect</button>
     </div>
 
-    <!-- VOTING APP -->
-    <div id="app-zone" class="hidden w-full max-w-md space-y-4">
-        <div class="glass p-8 text-center">
-            <div id="avg-display" class="text-[10px] font-mono text-indigo-400 mb-2 font-bold">AVG: --</div>
-            <img id="flag-img" src="" class="h-10 mx-auto mb-4 rounded shadow-lg">
-            <h2 id="country-name" class="text-4xl font-black mb-6 uppercase italic">Loading...</h2>
+    <!-- APP UI -->
+    <div id="app" class="hidden w-full max-w-md space-y-4">
+        
+        <div class="glass p-8 text-center relative">
+            <div id="avg-badge" class="absolute top-4 right-4 bg-indigo-500/20 text-indigo-400 text-[10px] px-2 py-1 rounded font-mono">AVG: --</div>
+            <img id="flag" src="" class="h-10 mx-auto mb-4 rounded shadow-lg">
+            <h2 id="country" class="text-3xl font-black mb-6 uppercase italic tracking-tighter">Loading...</h2>
             
-            <div class="bg-black/40 p-8 rounded-3xl border border-white/5 mb-6">
-                <div id="score-val" class="text-7xl font-black italic text-indigo-500 mb-2">1</div>
-                <input type="range" id="score-rng" min="1" max="12" step="1" value="1" class="w-full h-1.5 accent-indigo-500">
+            <div class="bg-black/40 p-8 rounded-3xl border border-white/5 mb-6 shadow-inner">
+                <div id="cur-val" class="text-7xl font-black italic text-indigo-500 mb-2">1</div>
+                <input type="range" id="rng" min="1" max="12" step="1" value="1" class="w-full h-1.5">
             </div>
 
-            <div class="grid grid-cols-2 gap-2">
-                <button onclick="nav(-1)" class="btn bg-white/5 p-4 rounded-xl text-xs hover:bg-white/10">Back</button>
-                <button onclick="nav(1)" class="btn bg-indigo-600 p-4 rounded-xl text-xs">Next</button>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="nav(-1)" class="bg-white/5 p-4 rounded-xl font-bold text-[10px] uppercase tracking-widest">Back</button>
+                <button onclick="nav(1)" class="bg-indigo-600 p-4 rounded-xl font-bold text-[10px] uppercase tracking-widest">Next</button>
             </div>
         </div>
 
         <div class="glass p-6">
-            <h3 class="text-[10px] font-black opacity-30 uppercase mb-4">Live Scores</h3>
-            <div id="score-list" class="space-y-2"></div>
+            <h3 class="text-[10px] font-black opacity-30 uppercase mb-4 tracking-[0.2em]">Live Consensus</h3>
+            <div id="jury-list" class="space-y-2"></div>
         </div>
     </div>
 
@@ -64,94 +62,97 @@ const songs = [
     {c:"Belgium", code:"be"}, {c:"Austria", code:"at"}
 ];
 
-let idx = 0, myName = "", db = {};
-const ROOM = "ESC_FINAL_999"; 
+let idx = 0, myName = "", roomData = {};
+const ROOM_ID = "ESC2026_FINAL_PRODUCTION"; // All users on GitHub will see each other here
 
-// Using a single, very stable relay to ensure PC and Phone meet in the same place
+// 1. Initialize Gun with reliable HTTPS peers
 const gun = Gun({
-    peers: ['https://gun-manhattan.herokuapp.com/gun']
+    peers: [
+        'https://gun-manhattan.herokuapp.com/gun',
+        'https://relay.peer.ooo/gun'
+    ]
 });
 
-// Update connection status
-gun.on('hi', () => {
+// 2. Status Updates
+gun.on('hi', (p) => {
     document.getElementById('dot').className = "h-2 w-2 rounded-full bg-green-500 shadow-[0_0_10px_#4ade80]";
-    document.getElementById('status').innerText = "CONNECTED";
+    document.getElementById('stat').innerText = "Live Mesh Connected";
+    updatePeerCount();
 });
 
-function join() {
-    myName = document.getElementById('u').value.trim();
-    if(!myName) return alert("Enter name!");
-    document.getElementById('login-zone').style.display = 'none';
-    document.getElementById('app-zone').style.display = 'block';
+function updatePeerCount() {
+    const p = Object.keys(gun._.opt.peers).length;
+    document.getElementById('peer-count').innerText = "Peers: " + p;
+}
 
-    // THE SYNC ENGINE
-    // We listen to one "node" per country. This is the most stable way to sync.
-    songs.forEach(song => {
-        gun.get(ROOM).get(song.c).map().on((score, user) => {
-            if(!user || user === '_' || typeof score === 'object') return;
-            
-            if(!db[song.c]) db[song.c] = {};
-            db[song.c][user] = score;
-            
-            if(song.c === songs[idx].c) updateUI();
-        });
-    });
+// 3. App Entry
+function startApp() {
+    myName = document.getElementById('uName').value.trim();
+    if(!myName) return alert("Please enter your name.");
+    
+    document.getElementById('setup').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
 
-    // Listen for Pings (Test Signal)
-    gun.get(ROOM).get('pings').on(data => {
-        if(data && data.user !== myName) {
-            alert("Signal Received from " + data.user + "!");
-        }
+    // Global Listener
+    gun.get(ROOM_ID).map().on((val, key) => {
+        if(!key || key === '_' || typeof val === 'object') return;
+        const [cName, uName] = key.split('::');
+        if(!roomData[cName]) roomData[cName] = {};
+        roomData[cName][uName] = val;
+        if(cName === songs[idx].c) refreshUI();
     });
 
     render();
 }
 
+// 4. Rendering
 function render() {
     const s = songs[idx];
-    document.getElementById('country-name').innerText = s.c;
-    document.getElementById('flag-img').src = `https://flagcdn.com/w160/${s.code}.png`;
+    document.getElementById('country').innerText = s.c;
+    document.getElementById('flag').src = `https://flagcdn.com/w160/${s.code}.png`;
     
-    const saved = (db[s.c] && db[s.c][myName]) ? db[s.c][myName] : 1;
-    document.getElementById('score-rng').value = saved;
-    document.getElementById('score-val').innerText = saved;
+    // Set slider to my previous vote for this country
+    const myVote = (roomData[s.c] && roomData[s.c][myName]) ? roomData[s.c][myName] : 1;
+    document.getElementById('rng').value = myVote;
+    document.getElementById('cur-val').innerText = myVote;
     
-    updateUI();
+    refreshUI();
 }
 
-function updateUI() {
-    const container = document.getElementById('score-list');
-    const votes = db[songs[idx].c] || {};
-    container.innerHTML = '';
+function refreshUI() {
+    const votes = roomData[songs[idx].c] || {};
+    const list = document.getElementById('jury-list');
+    list.innerHTML = '';
     
-    let sum = 0, count = 0;
-    Object.entries(votes).forEach(([user, val]) => {
+    let sum = 0, n = 0;
+    Object.entries(votes).forEach(([user, score]) => {
         const row = document.createElement('div');
-        row.className = "flex justify-between bg-white/5 p-3 rounded-lg border border-white/5";
-        row.innerHTML = `<span class="opacity-50 text-xs">${user}</span><span class="font-bold text-indigo-400">${val}</span>`;
-        container.appendChild(row);
-        sum += parseInt(val);
-        count++;
+        row.className = "flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5";
+        row.innerHTML = `<span class="text-xs font-bold ${user === myName ? 'text-indigo-400' : 'opacity-40'}">${user}</span>
+                         <span class="font-black text-indigo-500 italic">${score}</span>`;
+        list.appendChild(row);
+        sum += parseInt(score);
+        n++;
     });
-    
-    document.getElementById('avg-display').innerText = count > 0 ? "AVG: " + (sum/count).toFixed(1) : "AVG: --";
+
+    document.getElementById('avg-badge').innerText = n > 0 ? "AVG: " + (sum/n).toFixed(1) : "AVG: --";
 }
 
-document.getElementById('score-rng').oninput = function() {
+// 5. Input
+document.getElementById('rng').oninput = function() {
     const val = this.value;
-    document.getElementById('score-val').innerText = val;
-    // SAVE: ROOM -> Country -> User -> Score
-    gun.get(ROOM).get(songs[idx].c).get(myName).put(val);
+    document.getElementById('cur-val').innerText = val;
+    // PUSH FLAT KEY: "CountryName::UserName"
+    const key = songs[idx].c + "::" + myName;
+    gun.get(ROOM_ID).get(key).put(val);
 };
 
-function nav(d) {
-    let n = idx + d;
-    if(n >= 0 && n < songs.length) { idx = n; render(); }
-}
-
-function sendPing() {
-    if(!myName) return alert("Join first!");
-    gun.get(ROOM).get('pings').put({ user: myName, time: Date.now() });
+function nav(dir) {
+    let next = idx + dir;
+    if(next >= 0 && next < songs.length) {
+        idx = next;
+        render();
+    }
 }
 </script>
 </body>
