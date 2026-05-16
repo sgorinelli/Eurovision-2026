@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ESC 2026 - MASTER CONTROL</title>
+    <title>ESC 2026 - VIENNA LIVE</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
     <style>
@@ -29,10 +29,17 @@
         .details-expand { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
         .details-expand.open { max-height: 1000px; padding-bottom: 10px; }
         
-        /* CHAT STYLING */
+        /* CHAT ANIMATIONS */
         .chat-bubble { animation: pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); margin-bottom: 10px; }
         @keyframes pop { from { transform: translateY(5px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         
+        @keyframes pulse-pink {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.7); }
+            70% { transform: scale(1.2); box-shadow: 0 0 0 10px rgba(236, 72, 153, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); }
+        }
+        .animate-pulse-pink { animation: pulse-pink 2s infinite; }
+
         #chat-messages::-webkit-scrollbar { width: 4px; }
         #chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 
@@ -42,7 +49,6 @@
             -webkit-backdrop-filter: blur(2px);
         }
 
-        /* ADMIN ALERT BOX */
         .admin-warning {
             border: 2px solid rgba(239, 68, 68, 0.5);
             background: rgba(20, 10, 10, 0.95);
@@ -52,23 +58,23 @@
 <body class="p-4 flex flex-col items-center">
 
     <!-- HEADER -->
-    <div class="w-full max-w-md flex justify-between items-center mb-4 z-10">
+    <div class="w-full max-w-md flex justify-between items-center mb-6 z-10">
         <div class="flex items-center gap-2">
             <div id="dot" class="h-2 w-2 rounded-full bg-red-600 shadow-[0_0_8px_red]"></div>
-            <span id="stat" class="text-[9px] font-black uppercase tracking-widest opacity-40">Connecting</span>
+            <span id="stat" class="text-[10px] font-black uppercase tracking-widest opacity-40">Connecting</span>
         </div>
         <div class="flex gap-2">
-            <button onclick="openModal('chat-ui')" class="relative text-[9px] font-black bg-indigo-500/20 border border-indigo-500/30 px-3 py-2 rounded-full uppercase tracking-widest">
-                💬 Chat <span id="chat-notif" class="hidden absolute -top-1 -right-1 h-2.5 w-2.5 bg-pink-500 border-2 border-[#0f0c29] rounded-full"></span>
+            <button id="chat-btn" onclick="openModal('chat-ui')" class="relative text-[11px] font-black bg-indigo-500/20 border border-indigo-500/40 px-4 py-2.5 rounded-full uppercase tracking-widest transition-all active:scale-95">
+                💬 Chat <span id="chat-notif" class="hidden absolute -top-1 -right-1 h-3 w-3 bg-pink-500 border-2 border-[#16213e] rounded-full animate-pulse-pink"></span>
             </button>
-            <button onclick="openModal('rankings')" class="text-[10px] font-black bg-indigo-500/20 border border-indigo-500/30 px-3 py-2 rounded-full uppercase tracking-widest">🏆 Rankings</button>
+            <button onclick="openModal('rankings')" class="text-[11px] font-black bg-indigo-500/20 border border-indigo-500/40 px-4 py-2.5 rounded-full uppercase tracking-widest transition-all active:scale-95">🏆 Standings</button>
         </div>
     </div>
 
     <!-- LOGIN -->
     <div id="setup" class="w-full max-w-md glass p-8 text-center mt-10">
         <h1 class="text-3xl font-black italic mb-1 uppercase tracking-tighter">Vienna <span class="accent">2026</span></h1>
-        <p class="text-[10px] opacity-40 mb-6 tracking-[0.3em]">ADMIN-ENABLED JURY</p>
+        <p class="text-[10px] opacity-40 mb-6 tracking-[0.3em]">GRAND FINAL JURY</p>
         <input id="uName" type="text" placeholder="Your Name" class="w-full bg-white/5 border border-white/10 p-4 rounded-xl mb-4 text-center text-lg focus:border-indigo-400 outline-none">
         <button onclick="init()" class="w-full bg-indigo-600 p-4 rounded-xl font-black uppercase tracking-widest text-sm shadow-lg shadow-indigo-600/20">Join Session</button>
     </div>
@@ -109,7 +115,7 @@
         <div id="chat-messages" class="flex-1 overflow-y-auto space-y-4 mb-4 p-2 pb-10"></div>
         <div class="flex gap-2 p-2 glass items-center mb-2">
             <input id="chat-input" type="text" placeholder="Type a message..." class="flex-1 bg-transparent border-none outline-none text-base p-2">
-            <button onclick="sendChat()" class="bg-indigo-600 h-10 px-5 rounded-xl font-black text-[10px] uppercase">Send</button>
+            <button onclick="sendChat()" class="bg-indigo-600 h-11 px-6 rounded-xl font-black text-xs uppercase">Send</button>
         </div>
     </div>
 
@@ -170,7 +176,7 @@ const songs = [
 let idx = 0, myName = "", client = null, roomData = {}; 
 const ROOM = "ESC2026_FINAL_" + (window.location.hash.substring(1) || "MAIN");
 const ADMIN_NAME = "SIMONE";
-let pendingDelete = null; // Stores { country, user } during confirmation
+let pendingDelete = null;
 
 window.addEventListener('popstate', function(event) {
     document.getElementById('chat-ui').classList.add('hidden');
@@ -181,6 +187,8 @@ window.addEventListener('popstate', function(event) {
 function openModal(id) {
     document.getElementById(id).classList.remove('hidden');
     if (id === 'rankings') updateRankingsUI();
+    // NEW: Clear chat notification when opening chat
+    if (id === 'chat-ui') document.getElementById('chat-notif').classList.add('hidden');
     history.pushState({ modalOpen: true }, "");
 }
 
@@ -201,17 +209,10 @@ function hideDeleteConfirm() {
 function executeDelete() {
     if(!pendingDelete) return;
     const { country, user } = pendingDelete;
-    
-    // Execute local wipe
     if(roomData[country]) delete roomData[country][user];
-    
-    // Broadcast Global wipe
     send({ type: "ADMIN_DELETE", country: country, user: user });
-    
-    // Refresh UIs
     if(country === songs[idx].c) refreshUI();
     if(!document.getElementById('rankings').classList.contains('hidden')) updateRankingsUI();
-    
     hideDeleteConfirm();
 }
 
@@ -321,7 +322,10 @@ function addChatMessage(user, text) {
     div.innerHTML = `<span style="color: ${userColor}; font-size: 10px; font-weight: 900; text-transform: uppercase; margin-bottom: 2px; padding: 0 4px;">${user}</span><div class="${isMe ? 'bg-indigo-600' : 'bg-white/10'} p-2.5 rounded-2xl max-w-[90%] shadow-lg"><p style="font-size: 14.5px; line-height: 1.4; font-weight: 400; color: white;">${text}</p></div>`;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
-    if(document.getElementById('chat-ui').classList.contains('hidden')) document.getElementById('chat-notif').classList.remove('hidden');
+    // Show notification pulse if chat is closed
+    if(document.getElementById('chat-ui').classList.contains('hidden')) {
+        document.getElementById('chat-notif').classList.remove('hidden');
+    }
 }
 
 document.getElementById('chat-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendChat(); });
