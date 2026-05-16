@@ -3,102 +3,172 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESC 2026 - TOTAL SYNC</title>
+    <title>ESC 2026 - VIENNA LIVE</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
     <style>
-        body { background: #050510; color: white; font-family: sans-serif; min-height: 100vh; }
-        .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; }
-        .log-entry { animation: fadeIn 0.3s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        /* EUROVISION 2026 GRADIENT THEME */
+        body { 
+            background: #0f0c29; 
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0c29 100%);
+            background-attachment: fixed;
+            color: white; 
+            font-family: 'Inter', sans-serif; 
+            min-height: 100vh; 
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Ambient Stage Glows */
+        body::before {
+            content: "";
+            position: fixed;
+            top: -10%;
+            right: -10%;
+            width: 50%;
+            height: 50%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+            z-index: -1;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            bottom: -10%;
+            left: -10%;
+            width: 60%;
+            height: 60%;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
+            z-index: -1;
+        }
+
+        .glass { 
+            background: rgba(255, 255, 255, 0.04); 
+            backdrop-filter: blur(20px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            border-radius: 28px; 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .accent { color: #a5b4fc; }
+        
+        input[type="range"] { 
+            accent-color: #818cf8; 
+            background: rgba(255,255,255,0.1);
+        }
+
+        .ranking-row { animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body class="p-4 md:p-10 flex flex-col items-center">
 
-    <!-- HEADER -->
-    <div class="w-full max-w-md glass p-4 mb-6 flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+    <!-- TOP NAV -->
+    <div class="w-full max-w-md flex justify-between items-center mb-8 px-4">
         <div class="flex items-center gap-2">
-            <div id="dot" class="h-2 w-2 rounded-full bg-red-600 transition-all duration-300"></div>
-            <span id="stat">Connecting...</span>
+            <div id="dot" class="h-2.5 w-2.5 rounded-full bg-red-600 shadow-[0_0_10px_red] transition-all duration-300"></div>
+            <span id="stat" class="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Standby</span>
         </div>
-        <div id="room-id" class="opacity-40 tracking-tighter">ROOM: ...</div>
+        <button onclick="toggleRankings()" class="text-[10px] font-black bg-indigo-500/20 border border-indigo-500/30 px-5 py-2 rounded-full hover:bg-indigo-500/40 transition-all uppercase tracking-widest">🏆 Leaderboard</button>
     </div>
 
     <!-- LOGIN -->
-    <div id="setup" class="w-full max-w-md glass p-10 text-center shadow-2xl">
-        <h1 class="text-3xl font-black italic mb-2 tracking-tighter">ESC <span class="text-indigo-500">2026</span></h1>
-        <p class="text-[10px] opacity-40 mb-10 tracking-[0.4em]">STATE SYNC ENGINE</p>
-        <input id="uName" type="text" placeholder="Your Name" class="w-full bg-black/50 border border-white/10 p-4 rounded-xl mb-4 text-center focus:border-indigo-500 outline-none">
-        <button onclick="init()" class="w-full bg-indigo-600 p-4 rounded-xl font-black uppercase tracking-widest hover:bg-indigo-500">Enter Room</button>
+    <div id="setup" class="w-full max-w-md glass p-12 text-center shadow-2xl mt-10">
+        <div class="text-5xl mb-6 drop-shadow-lg">✨</div>
+        <h1 class="text-4xl font-black italic mb-2 tracking-tighter uppercase">Vienna <span class="accent">2026</span></h1>
+        <p class="text-[11px] opacity-50 mb-10 tracking-[0.5em] font-bold">GRAND FINAL JURY</p>
+        <input id="uName" type="text" placeholder="Your Name" class="w-full bg-white/5 border border-white/10 p-5 rounded-2xl mb-5 text-center focus:border-indigo-400 outline-none transition-all placeholder:opacity-30">
+        <button onclick="init()" class="w-full bg-indigo-600 hover:bg-indigo-500 p-5 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20 transition-all">Join Live Room</button>
     </div>
 
-    <!-- APP -->
-    <div id="app" class="hidden w-full max-w-md space-y-4">
-        <div class="glass p-8 text-center relative">
-            <div id="avg" class="absolute top-4 right-4 bg-indigo-500/20 text-indigo-400 text-[10px] px-2 py-1 rounded font-mono font-bold">AVG: --</div>
-            <img id="flag" src="" class="h-10 mx-auto mb-4 rounded shadow-lg">
-            <h2 id="country" class="text-3xl font-black mb-6 uppercase italic">Country</h2>
+    <!-- MAIN APP -->
+    <div id="app" class="hidden w-full max-w-md space-y-6">
+        <div class="glass p-8 text-center relative overflow-hidden">
+            <!-- Background Glow for Card -->
+            <div class="absolute -top-24 -left-24 w-48 h-48 bg-indigo-500/10 blur-3xl rounded-full"></div>
             
-            <div class="bg-black/40 p-8 rounded-3xl border border-white/5 mb-6 shadow-inner">
-                <div id="cur-val" class="text-7xl font-black italic text-indigo-500 leading-none mb-2">1</div>
-                <input type="range" id="rng" min="1" max="12" step="1" value="1" class="w-full h-1.5 accent-indigo-500">
+            <div id="avg" class="absolute top-5 right-5 bg-indigo-500/20 text-indigo-200 text-[10px] px-3 py-1 rounded-full font-black border border-indigo-500/30">AVG: --</div>
+            <div id="song-num" class="absolute top-5 left-5 opacity-30 text-[11px] font-black tracking-widest italic">--</div>
+            
+            <img id="flag" src="" class="h-12 mx-auto mb-6 rounded-lg shadow-2xl ring-4 ring-white/5">
+            <h2 id="country" class="text-4xl font-black mb-1 uppercase italic tracking-tighter drop-shadow-md">Country</h2>
+            <p id="artist" class="text-[11px] opacity-50 uppercase tracking-[0.3em] font-bold mb-8">Artist Name</p>
+            
+            <div class="bg-black/40 p-10 rounded-[32px] border border-white/5 mb-8 shadow-inner">
+                <div id="cur-val" class="text-9xl font-black italic accent leading-none mb-6 drop-shadow-xl">1</div>
+                <input type="range" id="rng" min="1" max="10" step="1" value="1" class="w-full h-2">
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
-                <button onclick="nav(-1)" class="bg-white/5 p-4 rounded-xl font-bold text-[10px] uppercase">Back</button>
-                <button onclick="nav(1)" class="bg-indigo-600 p-4 rounded-xl font-bold text-[10px] uppercase">Next</button>
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="nav(-1)" class="bg-white/5 hover:bg-white/10 p-5 rounded-2xl font-black text-[11px] uppercase tracking-widest border border-white/5 transition-all">Back</button>
+                <button onclick="nav(1)" class="bg-indigo-600 hover:bg-indigo-500 p-5 rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-lg shadow-indigo-500/20 transition-all">Next Song</button>
             </div>
         </div>
 
-        <!-- JURY FEED -->
-        <div class="glass p-6">
-            <h3 class="text-[10px] font-black opacity-30 uppercase mb-4">Consensus</h3>
-            <div id="jury-list" class="space-y-2 mb-6"></div>
-            
-            <hr class="border-white/5 mb-4">
-            
-            <h3 class="text-[9px] font-black opacity-20 uppercase mb-2">Network Activity</h3>
-            <div id="activity-log" class="text-[8px] font-mono opacity-30 space-y-1 h-12 overflow-hidden">
-                Waiting for signal...
+        <div class="glass p-8">
+            <h3 class="text-[11px] font-black opacity-30 uppercase mb-5 tracking-[0.3em]">Jury Consensus</h3>
+            <div id="jury-list" class="space-y-3"></div>
+        </div>
+    </div>
+
+    <!-- RANKINGS MODAL -->
+    <div id="rankings" class="hidden fixed inset-0 z-50 bg-[#0f0c29]/95 backdrop-blur-3xl p-8 overflow-y-auto">
+        <div class="max-w-md mx-auto">
+            <div class="flex justify-between items-center mb-10">
+                <h2 class="text-3xl font-black italic uppercase tracking-tighter">Grand Final <span class="accent">Rankings</span></h2>
+                <button onclick="toggleRankings()" class="h-12 w-12 flex items-center justify-center rounded-full bg-white/5 text-3xl font-light hover:bg-white/10">×</button>
             </div>
+            <div id="rankings-list" class="space-y-3"></div>
         </div>
     </div>
 
 <script>
+// --- FULL 2026 RUNNING ORDER ---
 const songs = [
-    {c:"Denmark", code:"dk"}, {c:"Germany", code:"de"}, {c:"Israel", code:"il"},
-    {c:"Belgium", code:"be"}, {c:"Austria", code:"at"}
+    {n:"01", c:"Austria", code:"at", a:"COSMÓ"},
+    {n:"02", c:"United Kingdom", code:"gb", a:"Mae Muller"},
+    {n:"03", c:"Italy", code:"it", a:"Marco Mengoni"},
+    {n:"04", c:"France", code:"fr", a:"La Zarra"},
+    {n:"05", c:"Spain", code:"es", a:"Blanca Paloma"},
+    {n:"06", c:"Germany", code:"de", a:"Sarah Engels"},
+    {n:"07", c:"Sweden", code:"se", a:"Loreen"},
+    {n:"08", c:"Norway", code:"no", a:"Alessandra"},
+    {n:"09", c:"Switzerland", code:"ch", a:"Remo Forrer"},
+    {n:"10", c:"Finland", code:"fi", a:"Käärijä"},
+    {n:"11", c:"Ukraine", code:"ua", a:"TVORCHI"},
+    {n:"12", c:"Israel", code:"il", a:"Noam Bettan"},
+    {n:"13", c:"Netherlands", code:"nl", a:"Mia & Dion"},
+    {n:"14", c:"Belgium", code:"be", a:"ESSYLA"},
+    {n:"15", c:"Denmark", code:"dk", a:"Søren Torpegaard Lund"},
+    {n:"16", c:"Greece", code:"gr", a:"Victor Vernicos"},
+    {n:"17", c:"Portugal", code:"pt", a:"Mimicat"},
+    {n:"18", c:"Armenia", code:"am", a:"Brunette"},
+    {n:"19", c:"Croatia", code:"hr", a:"Let 3"},
+    {n:"20", c:"Serbia", code:"rs", a:"Luke Black"},
+    {n:"21", c:"Slovenia", code:"si", a:"Joker Out"},
+    {n:"22", c:"Ireland", code:"ie", a:"Wild Youth"},
+    {n:"23", c:"Lithuania", code:"lt", a:"Monika Linkytė"},
+    {n:"24", c:"Estonia", code:"ee", a:"Alika"},
+    {n:"25", c:"Poland", code:"pl", a:"Blanka"},
+    {n:"26", c:"Georgia", code:"ge", a:"Iru"}
 ];
 
 let idx = 0, myName = "", client = null;
-let roomData = {}; // Store for ALL country scores
+let roomData = {}; 
 
-// Using a high-uniqueness room ID
-const ROOM = "ESC2026_PROD_" + (window.location.hash.substring(1) || "MAIN");
-document.getElementById('room-id').innerText = "ROOM: " + ROOM;
-
-function log(msg) {
-    const el = document.getElementById('activity-log');
-    el.innerHTML = `<div class="log-entry">[${new Date().toLocaleTimeString()}] ${msg}</div>` + el.innerHTML;
-}
+const ROOM = "ESC2026_FINAL_" + (window.location.hash.substring(1) || "MAIN");
 
 function init() {
     myName = document.getElementById('uName').value.trim();
     if(!myName) return alert("Enter Name");
 
-    // Connect to HiveMQ Public Broker
     client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
 
     client.on('connect', () => {
-        document.getElementById('dot').className = "h-2 w-2 rounded-full bg-green-500 shadow-[0_0_10px_#4ade80]";
+        document.getElementById('dot').className = "h-2.5 w-2.5 rounded-full bg-green-400 shadow-[0_0_15px_#4ade80]";
         document.getElementById('stat').innerText = "LIVE";
-        
-        // Subscribe to the global room topic
         client.subscribe(`esc2026/${ROOM}/sync`);
-        
-        // Phase 1: Shout "HELLO" to request state from others
         send({ type: "SYNC_REQUEST", from: myName });
-
         document.getElementById('setup').style.display = 'none';
         document.getElementById('app').style.display = 'block';
         render();
@@ -106,23 +176,13 @@ function init() {
 
     client.on('message', (topic, msg) => {
         const d = JSON.parse(msg.toString());
-        
         if (d.type === "SCORE_UPDATE") {
             updateData(d.country, d.user, d.score);
-            log(`Received ${d.score} from ${d.user}`);
-        } 
-        else if (d.type === "SYNC_REQUEST" && d.from !== myName) {
-            log(`${d.from} joined. Sending state...`);
-            // Someone joined! Send them our current local database
+        } else if (d.type === "SYNC_REQUEST" && d.from !== myName) {
             send({ type: "SYNC_RESPONSE", data: roomData, to: d.from });
-        }
-        else if (d.type === "SYNC_RESPONSE" && d.to === myName) {
-            log(`State received from peer.`);
-            // We just joined and someone gave us the data
-            Object.keys(d.data).forEach(cName => {
-                Object.keys(d.data[cName]).forEach(uName => {
-                    updateData(cName, uName, d.data[cName][uName]);
-                });
+        } else if (d.type === "SYNC_RESPONSE" && d.to === myName) {
+            Object.keys(d.data).forEach(c => {
+                Object.keys(d.data[c]).forEach(u => updateData(c, u, d.data[c][u]));
             });
         }
     });
@@ -134,19 +194,26 @@ function send(obj) {
 
 function updateData(c, u, s) {
     if(!roomData[c]) roomData[c] = {};
-    roomData[c][u] = s;
+    roomData[c][u] = parseInt(s);
     if(c === songs[idx].c) refreshUI();
 }
 
 function render() {
     const s = songs[idx];
     document.getElementById('country').innerText = s.c;
+    document.getElementById('artist').innerText = s.a;
+    document.getElementById('song-num').innerText = `${s.n} / 26`;
     document.getElementById('flag').src = `https://flagcdn.com/w160/${s.code}.png`;
     
-    const myLast = (roomData[s.c] && roomData[s.c][myName]) ? roomData[s.c][myName] : 1;
-    document.getElementById('rng').value = myLast;
-    document.getElementById('cur-val').innerText = myLast;
-    
+    const currentScore = (roomData[s.c] && roomData[s.c][myName]) ? roomData[s.c][myName] : 1;
+    document.getElementById('rng').value = currentScore;
+    document.getElementById('cur-val').innerText = currentScore;
+
+    if (!roomData[s.c] || !roomData[s.c][myName]) {
+        updateData(s.c, myName, 1);
+        send({ type: "SCORE_UPDATE", user: myName, country: s.c, score: 1 });
+    }
+
     refreshUI();
 }
 
@@ -158,11 +225,11 @@ function refreshUI() {
     let sum = 0, n = 0;
     Object.entries(votes).forEach(([user, score]) => {
         const row = document.createElement('div');
-        row.className = "flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5";
-        row.innerHTML = `<span class="text-xs font-bold ${user === myName ? 'text-indigo-400' : 'opacity-40'}">${user}</span>
-                         <span class="font-black text-indigo-500 italic">${score}</span>`;
+        row.className = "flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/5 ranking-row";
+        row.innerHTML = `<span class="text-[11px] font-black uppercase tracking-widest ${user === myName ? 'accent' : 'opacity-40'}">${user}</span>
+                         <span class="font-black accent italic text-xl">${score}</span>`;
         list.appendChild(row);
-        sum += parseInt(score);
+        sum += score;
         n++;
     });
     document.getElementById('avg').innerText = n > 0 ? "AVG: " + (sum/n).toFixed(1) : "AVG: --";
@@ -178,6 +245,47 @@ document.getElementById('rng').oninput = function() {
 function nav(dir) {
     let next = idx + dir;
     if(next >= 0 && next < songs.length) { idx = next; render(); }
+}
+
+function toggleRankings() {
+    const el = document.getElementById('rankings');
+    if(el.classList.contains('hidden')) {
+        updateRankingsUI();
+        el.classList.remove('hidden');
+    } else {
+        el.classList.add('hidden');
+    }
+}
+
+function updateRankingsUI() {
+    const container = document.getElementById('rankings-list');
+    container.innerHTML = '';
+    
+    const results = songs.map(s => {
+        const votes = roomData[s.c] || {};
+        const vals = Object.values(votes);
+        const avg = vals.length > 0 ? (vals.reduce((a,b) => a+b, 0) / vals.length) : 0;
+        return { name: s.c, avg: avg, code: s.code };
+    }).filter(r => r.avg > 0).sort((a,b) => b.avg - a.avg);
+
+    results.forEach((r, i) => {
+        const row = document.createElement('div');
+        row.className = "flex justify-between items-center bg-white/5 p-5 rounded-3xl border border-white/10 ranking-row";
+        row.style.animationDelay = `${i * 0.05}s`;
+        row.innerHTML = `
+            <div class="flex items-center gap-5">
+                <span class="text-2xl font-black opacity-10">#${i+1}</span>
+                <img src="https://flagcdn.com/w80/${r.code}.png" class="h-6 rounded shadow-md">
+                <span class="font-black tracking-tighter uppercase italic">${r.name}</span>
+            </div>
+            <span class="text-2xl font-black accent italic">${r.avg.toFixed(1)}</span>
+        `;
+        container.appendChild(row);
+    });
+
+    if(results.length === 0) {
+        container.innerHTML = '<p class="text-center opacity-30 py-20 uppercase tracking-[0.5em] font-bold text-xs">No votes cast yet.</p>';
+    }
 }
 </script>
 </body>
